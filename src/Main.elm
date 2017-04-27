@@ -10,6 +10,8 @@ import WebSocket
 
 import Irc exposing (Message)
 
+import Update as U
+
 
 main : Program Never Model Msg
 main =
