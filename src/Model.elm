@@ -46,8 +46,8 @@ type alias Model =
 serverBufferName : ChannelName
 serverBufferName = ":server:"
 
-getServer : Model -> ServerChannel -> Maybe ServerInfo
-getServer model (server, _) =
+getServer : ServerChannel -> Model -> Maybe ServerInfo
+getServer (server, _) model =
   D.get server model.serverInfo
 
 
