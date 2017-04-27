@@ -17,37 +17,42 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  let
-    current = model.currentChannel
-    server = getServer current model
-    channel = getChannel current model
-  in
-      case msg of
-          SendLine ->
+    case msg of
+        SendLine ->
             -- TODO: need to implement this
             ( model, Cmd.none )
-          TypeLine str ->
-            case channel of
+        TypeLine str ->
+            case getChannel model.currentChannel model of
                 Just chan ->
-                  let
-                    channel_ = { chan | inputLine = str }
-                    model_ = { model | channelInfo = D.insert current channel_ model.channelInfo }
-                  in
-                    ( model_, Cmd.none )
+                    let
+                        channel_ = { chan | inputLine = str }
+                        model_ = setChannel model.currentChannel channel_ model
+                    in
+                        ( model_, Cmd.none )
+
                 Nothing ->
-                  -- TODO: handle this?
-                  Debug.log "getChannel was none?"
-                  ( model, Cmd.none )
+                    -- TODO: handle this?
+                    Debug.log "getChannel was none?"
+                    ( model, Cmd.none )
 
-          CreateChannel ( serverName, channelName ) ->
+        CreateChannel ( serverName, channelName ) ->
             let
-              channel = newChannel
-
+                channel = Model.newChannel
+                model_ = setChannel model.currentChannel channel model
             in
-                ( model, Cmd.none )
+                ( model_, Cmd.none )
+
+        SelectChannel ( serverName, channelName ) ->
+            case getChannel (serverName, channelName) model of
+                Just _ ->
+                    ( { model | currentChannel = ( serverName, channelName ) }, Cmd.none )
+                _ ->
+                    -- TODO: handle this?
+                    Debug.log "tried to select a bad channel?"
+                    ( model, Cmd.none )
 
 
 
-          _ ->
-            -- TODO: handle these cases
-            ( model, Cmd.none )
+        _ ->
+          -- TODO: handle these cases
+          ( model, Cmd.none )
