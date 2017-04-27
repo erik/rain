@@ -1,0 +1,25 @@
+<!doctype html>
+
+<head>
+  <title>Rain IRC</title>
+
+  <script src="main.js"></script>
+  <script src="irc-parse.js"></script>
+</head>
+
+<h1>chat?</h1>
+
+<div id="main"></div>
+
+<script>
+  let node = document.getElementById('main');
+  let app = Elm.Main.embed(node);
+
+  app.ports.parse_irc.subscribe(line => {
+      let p = parse_irc(line)
+      p.time = +(new Date(p.tags.time) || new Date());
+      console.log('parsed_message:', p)
+
+      app.ports.irc_messages.send(p)
+  })
+</script>
