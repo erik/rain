@@ -29,7 +29,7 @@
   let node = document.getElementById('main');
   let app = Elm.Main.embed(node);
 
-  app.ports.parse_irc.subscribe(line => {
+  app.ports.parse_raw.subscribe(line => {
       let p = parse_irc(line)
       p.time = +(new Date(p.tags.time) || new Date());
       console.log('parsed_message:', p)

@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Date
 import Date.Extra.Format as Format
@@ -10,6 +10,7 @@ import WebSocket
 
 import Irc exposing (Message)
 
+import Model
 import Update as U
 
 
@@ -57,24 +58,19 @@ update msg model =
         SendMessage ->
           ( { model | input = "" }, WebSocket.send echoServer model.input )
         RecvMessage m ->
-          let parsed = Irc.parse m
-          in ( { model | messages = parsed :: model.messages}, Cmd.none )
-        RecvWebSocket str ->
-          ( model, parse_irc str )
-
+          let
+              parsed = Irc.parse m
+          in
+              ( { model | messages = parsed :: model.messages}, Cmd.none )
+        _ -> ( model, Cmd.none )
 -- Subscriptions
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ WebSocket.listen echoServer RecvWebSocket
-    , irc_messages RecvMessage
+    , Irc.irc_messages RecvMessage
     ]
-
--- Ports
-
-port parse_irc : String -> Cmd msg
-port irc_messages : (Irc.ParsedMessage -> msg) -> Sub msg
 
 -- View
 

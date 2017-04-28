@@ -98,3 +98,8 @@ parse msg =
               Unknown msg
   in
       (ts, m)
+
+-- Ports
+
+port parse_raw : (String, String) -> Cmd msg
+port irc_messages : (ParsedMessage -> msg) -> Sub msg

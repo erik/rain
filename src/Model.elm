@@ -40,7 +40,7 @@ type alias ChannelInfo =
 type alias Model =
   { serverInfo : Dict ServerName ServerInfo
   , channelInfo : Dict ServerChannel ChannelInfo
-  , currentChannel : ServerChannel
+  , current : ServerChannel
   }
 
 serverBufferName : ChannelName
