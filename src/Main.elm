@@ -1,11 +1,7 @@
 module Main exposing (..)
 
-import Date
-import Date.Extra.Format as Format
-
+import Dict
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
 import WebSocket
 
 import Irc exposing (Message)
@@ -23,18 +19,19 @@ main =
         , subscriptions = subscriptions
         }
 
-echoServer : String
-echoServer = "ws://localhost:8080/"
-
-
 init : ( Model, Cmd Msg )
 init =
     ( initialModel, Cmd.none )
 
--- Subscriptions
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ Irc.irc_messages ReceiveLine
-    ]
+  let
+    -- FIXME: this is ugly, gotta be a better way
+    recvIrc = Irc.irc_messages ReceiveLine
+    recvWs = model.serverInfo
+           |> Dict.toList
+           |> List.map (\(name, s) -> WebSocket.listen s.socket
+                          (\line -> ReceiveRawLine (name, line)))
+  in
+      Sub.batch (recvIrc :: recvWs)

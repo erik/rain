@@ -12,6 +12,7 @@ type alias ServerChannel = (ServerName, ChannelName)
 type alias ServerInfo =
   { socket : String
   , nick : String
+  , pass : Maybe String
   }
 
 type alias Line =
@@ -76,3 +77,11 @@ setChannel sc chan model =
 getChannel : ServerChannel -> Model -> Maybe ChannelInfo
 getChannel sc model =
   D.get sc model.channelInfo
+
+getActiveChannel : Model -> Maybe ChannelInfo
+getActiveChannel model =
+  getChannel model.current model
+
+getActiveServer : Model -> Maybe ServerInfo
+getActiveServer model =
+  getServer model.current model

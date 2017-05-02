@@ -1,7 +1,7 @@
 module View exposing (view)
 
 import Html exposing (..)
--- import Html.Attributes exposing (id, class, type_, placeholder, value, autocomplete)
+import Html.Attributes exposing (id) --, class, type_, placeholder, value, autocomplete)
 
 import Model exposing (..)
 import Update exposing (Msg(..))
@@ -17,7 +17,9 @@ view model =
 
 viewChannelList : Model -> Html Msg
 viewChannelList model =
-  div [] []
+  div [ id "channelList" ]
+    [
+    ]
 
 
 viewChannel : Model -> Html Msg
