@@ -31,7 +31,8 @@ subscriptions model =
     recvIrc = Irc.irc_messages ReceiveLine
     recvWs = model.serverInfo
            |> Dict.toList
-           |> List.map (\(name, s) -> WebSocket.listen s.socket
-                          (\line -> ReceiveRawLine (name, line)))
+           |> List.map (\(serverName, info) ->
+                            WebSocket.listen info.socket
+                            (\n -> ReceiveRawLine serverName n))
   in
       Sub.batch (recvIrc :: recvWs)

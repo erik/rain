@@ -12,11 +12,11 @@ type Msg
   = SendLine
   | TypeLine String
   | SendRawLine ServerName String
-  | ReceiveRawLine ( ServerName, String )
+  | ReceiveRawLine  ServerName String
   | ReceiveLine ( ServerName, Irc.ParsedMessage )
-  | CreateChannel ( ServerName, ChannelName )
-  | SelectChannel ( ServerName, ChannelName )
-  | CloseChannel ( ServerName, ChannelName )
+  | CreateChannel ServerName ChannelName
+  | SelectChannel ServerName ChannelName
+  | CloseChannel ServerName ChannelName
   | Noop
 
 
@@ -51,17 +51,17 @@ update msg model =
                     ( model, Cmd.none )
 
 
-        ReceiveRawLine ( serverName, line ) ->
+        ReceiveRawLine serverName line ->
             ( model, Irc.parse_raw (serverName, line) )
 
-        CreateChannel ( serverName, channelName ) ->
+        CreateChannel serverName channelName ->
             let
                 channel = Model.newChannel
                 model_ = setChannel ( serverName, channelName ) channel model
             in
                 ( model_, Cmd.none )
 
-        SelectChannel ( serverName, channelName ) ->
+        SelectChannel serverName channelName ->
             case getChannel (serverName, channelName) model of
                 Just _ ->
                     ( { model | current = ( serverName, channelName ) }, Cmd.none )
