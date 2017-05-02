@@ -10,9 +10,9 @@ import WebSocket
 
 import Irc exposing (Message)
 
-import Model
-import Update as U
-
+import Model exposing (Model, initialModel)
+import Update exposing (update, Msg(..))
+import View exposing (view)
 
 main : Program Never Model Msg
 main =
@@ -26,78 +26,15 @@ main =
 echoServer : String
 echoServer = "ws://localhost:8080/"
 
--- Model
-
-type alias Model =
-  { input : String
-  , messages : List (Date.Date, Irc.Message)
-  }
-
-
-initialModel : Model
-initialModel = { input = "" , messages = [] }
-
 
 init : ( Model, Cmd Msg )
 init =
     ( initialModel, Cmd.none )
 
--- Update
-
-type Msg
-  = Input String
-  | SendMessage
-  | RecvMessage Irc.ParsedMessage
-  | RecvWebSocket String
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        Input newInput ->
-          ( { model | input = newInput }, Cmd.none )
-        SendMessage ->
-          ( { model | input = "" }, WebSocket.send echoServer model.input )
-        RecvMessage m ->
-          let
-              parsed = Irc.parse m
-          in
-              ( { model | messages = parsed :: model.messages}, Cmd.none )
-        _ -> ( model, Cmd.none )
 -- Subscriptions
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
-    [ WebSocket.listen echoServer RecvWebSocket
-    , Irc.irc_messages RecvMessage
+    [ Irc.irc_messages ReceiveLine
     ]
-
--- View
-
-view : Model -> Html Msg
-view model =
-  div []
-    [ input [onInput Input, value model.input] []
-    , button [onClick SendMessage] [text "Send"]
-    , div [] (List.map viewMessage (List.reverse model.messages))
-    ]
-
-viewMessage : (Date.Date, Irc.Message) -> Html Msg
-viewMessage (ts, msg) =
-  let
-    innerHtml =
-      case msg of
-          Irc.Unknown s ->
-            text s.raw
-          Irc.Privmsg {from, target, text} ->
-            div [] [
-               pre [] [ Html.text <| target ++ ": <" ++ from.nick ++ ">: " ++ text]
-              ]
-          _ ->
-            text "something happened"
-  in
-      div []
-        [
-         div [] [ pre [] [ text <| "at " ++ (Format.isoString ts) ] ]
-        , innerHtml
-        ]

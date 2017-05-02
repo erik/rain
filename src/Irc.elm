@@ -3,6 +3,7 @@ port module Irc exposing (..)
 import Array exposing (..)
 import Date
 
+import Model exposing (ServerName)
 
 type alias ParsedMessage =
   { raw : String
@@ -101,5 +102,5 @@ parse msg =
 
 -- Ports
 
-port parse_raw : (String, String) -> Cmd msg
-port irc_messages : (ParsedMessage -> msg) -> Sub msg
+port parse_raw : (ServerName, String) -> Cmd msg
+port irc_messages : ((ServerName, ParsedMessage) -> msg) -> Sub msg

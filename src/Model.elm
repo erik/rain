@@ -43,6 +43,13 @@ type alias Model =
   , current : ServerChannel
   }
 
+initialModel : Model
+initialModel =
+  { serverInfo = Dict.fromList []
+  , channelInfo = Dict.fromList []
+  , current = ("Nah", "Nah")
+  }
+
 serverBufferName : ChannelName
 serverBufferName = ":server:"
 

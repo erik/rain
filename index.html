@@ -29,11 +29,11 @@
   let node = document.getElementById('main');
   let app = Elm.Main.embed(node);
 
-  app.ports.parse_raw.subscribe(line => {
+  app.ports.parse_raw.subscribe((server, line) => {
       let p = parse_irc(line)
       p.time = +(new Date(p.tags.time) || new Date());
       console.log('parsed_message:', p)
 
-      app.ports.irc_messages.send(p)
+      app.ports.irc_messages.send([server, p])
   })
 </script>
