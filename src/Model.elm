@@ -41,21 +41,21 @@ type alias ChannelInfo =
 type alias Model =
   { serverInfo : Dict ServerName ServerInfo
   , channelInfo : Dict ServerChannel ChannelInfo
-  , current : ServerChannel
+  , current : Maybe ServerChannel
   }
 
 initialModel : Model
 initialModel =
   { serverInfo = Dict.fromList []
   , channelInfo = Dict.fromList []
-  , current = ("Nah", "Nah")
+  , current = Nothing
   }
 
 serverBufferName : ChannelName
 serverBufferName = ":server:"
 
-getServer : ServerChannel -> Model -> Maybe ServerInfo
-getServer (server, _) model =
+getServer : Model -> ServerChannel -> Maybe ServerInfo
+getServer model (server, _) =
   D.get server model.serverInfo
 
 
@@ -67,21 +67,25 @@ newChannel =
   , inputLine = ""
   }
 
-setChannel : ServerChannel -> ChannelInfo -> Model -> Model
-setChannel sc chan model =
+setActiveChannel : ServerChannel -> ChannelInfo -> Model -> Model
+setActiveChannel sc chan model =
   let
     channelInfo = D.insert sc chan model.channelInfo
   in
       { model | channelInfo = channelInfo }
 
-getChannel : ServerChannel -> Model -> Maybe ChannelInfo
-getChannel sc model =
+getChannel : Model -> ServerChannel -> Maybe ChannelInfo
+getChannel model sc =
   D.get sc model.channelInfo
+
 
 getActiveChannel : Model -> Maybe ChannelInfo
 getActiveChannel model =
-  getChannel model.current model
+  model.current
+    |> Maybe.andThen (getChannel model)
+
 
 getActiveServer : Model -> Maybe ServerInfo
 getActiveServer model =
-  getServer model.current model
+  model.current
+    |> Maybe.andThen (getServer model)

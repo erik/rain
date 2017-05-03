@@ -14,11 +14,12 @@ view model =
     , viewChannel model
     ]
 
-
 viewChannelList : Model -> Html Msg
 viewChannelList model =
   div [ id "channelList" ]
-    [
+    [ ul []
+        [ li [] [ text "text"]
+        ]
     ]
 
 

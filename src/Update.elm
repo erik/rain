@@ -28,22 +28,22 @@ update msg model =
             ( model, Cmd.none )
 
         TypeLine str ->
-            case getChannel model.current model of
-                Just chan ->
+            case (model.current, getActiveChannel model) of
+                (Just current, Just chan) ->
                     let
                         channel_ = { chan | inputLine = str }
-                        model_ = setChannel model.current channel_ model
+                        model_ = setActiveChannel current channel_ model
                     in
                         ( model_, Cmd.none )
 
-                Nothing ->
+                _ ->
                     -- TODO: handle this?
                     Debug.log "getChannel was none?"
                     ( model, Cmd.none )
 
 
         SendRawLine serverName line ->
-            case getServer model.current model of
+            case getActiveServer model of
                 Just server ->
                     ( model, WebSocket.send server.socket line )
                 Nothing ->
@@ -57,14 +57,14 @@ update msg model =
         CreateChannel serverName channelName ->
             let
                 channel = Model.newChannel
-                model_ = setChannel ( serverName, channelName ) channel model
+                model_ = setActiveChannel ( serverName, channelName ) channel model
             in
                 ( model_, Cmd.none )
 
         SelectChannel serverName channelName ->
-            case getChannel (serverName, channelName) model of
+            case getChannel model (serverName, channelName) of
                 Just _ ->
-                    ( { model | current = ( serverName, channelName ) }, Cmd.none )
+                    ( { model | current = Just ( serverName, channelName ) }, Cmd.none )
                 _ ->
                     -- TODO: handle this?
                     Debug.log "tried to select a bad channel?"
@@ -77,7 +77,7 @@ update msg model =
 
 handleMessage : ( ServerName, Irc.Message ) -> Model -> ( Model, Cmd Msg )
 handleMessage (serverName, parsedMsg) model =
-    case getServer ( serverName, "" ) model of
+    case getServer model ( serverName, "" ) of
         Just s ->
             case parsedMsg of
                 Irc.Ping s ->
@@ -90,13 +90,13 @@ handleMessage (serverName, parsedMsg) model =
                                , name = who.realname
                                }
 
-                        chanInfo = getChannel ( serverName, channel ) model
+                        chanInfo = getChannel model ( serverName, channel )
                                  |> Maybe.withDefault Model.newChannel
 
                         chanInfo_ = { chanInfo | users = D.insert who.nick user chanInfo.users }
                     in
 
-                        ( setChannel ( serverName, channel) chanInfo_ model, Cmd.none )
+                        ( setActiveChannel ( serverName, channel) chanInfo_ model, Cmd.none )
                 _ ->
                     ( model, Cmd.none )
         Nothing ->
