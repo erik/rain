@@ -32,7 +32,7 @@ update msg model =
                 (Just current, Just chan) ->
                     let
                         channel_ = { chan | inputLine = str }
-                        model_ = setActiveChannel current channel_ model
+                        model_ = setChannel current channel_ model
                     in
                         ( model_, Cmd.none )
 
@@ -56,8 +56,8 @@ update msg model =
 
         CreateChannel serverName channelName ->
             let
-                channel = Model.newChannel
-                model_ = setActiveChannel ( serverName, channelName ) channel model
+                channel = Model.newChannel channelName
+                model_ = setChannel ( serverName, channelName ) channel model
             in
                 ( model_, Cmd.none )
 
@@ -91,12 +91,12 @@ handleMessage (serverName, parsedMsg) model =
                                }
 
                         chanInfo = getChannel model ( serverName, channel )
-                                 |> Maybe.withDefault Model.newChannel
+                                 |> Maybe.withDefault ( Model.newChannel channel )
 
                         chanInfo_ = { chanInfo | users = D.insert who.nick user chanInfo.users }
                     in
 
-                        ( setActiveChannel ( serverName, channel) chanInfo_ model, Cmd.none )
+                        ( setChannel ( serverName, channel) chanInfo_ model, Cmd.none )
                 _ ->
                     ( model, Cmd.none )
         Nothing ->

@@ -32,7 +32,8 @@ type alias UserInfo =
   }
 
 type alias ChannelInfo =
-  { users : Dict String UserInfo
+  { name : String
+  , users : Dict String UserInfo
   , topic : Maybe String
   , buffer : Buffer
   , inputLine : String
@@ -59,16 +60,17 @@ getServer model (server, _) =
   D.get server model.serverInfo
 
 
-newChannel : ChannelInfo
-newChannel =
-  { users = Dict.empty
+newChannel : String -> ChannelInfo
+newChannel name =
+  { name = name
+  , users = Dict.empty
   , topic = Nothing
   , buffer = []
   , inputLine = ""
   }
 
-setActiveChannel : ServerChannel -> ChannelInfo -> Model -> Model
-setActiveChannel sc chan model =
+setChannel : ServerChannel -> ChannelInfo -> Model -> Model
+setChannel sc chan model =
   let
     channelInfo = D.insert sc chan model.channelInfo
   in
