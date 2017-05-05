@@ -1,5 +1,6 @@
 module Update exposing (Msg(..), update)
 
+import Date exposing (Date)
 import Debug
 import Dict as D
 import WebSocket
@@ -52,7 +53,14 @@ update msg model =
 
 
         ReceiveRawLine serverName line ->
-            ( model, Irc.parse_raw (serverName, line) )
+          ( model, Irc.parse_raw (serverName, line) )
+
+        ReceiveLine ( serverName, parsed) ->
+          let
+            -- FIXME: lol
+            (ts, ircMsg) = Irc.parse parsed
+          in
+              handleMessage serverName ircMsg ts model
 
         CreateChannel serverName channelName ->
             let
@@ -75,13 +83,14 @@ update msg model =
           ( model, Cmd.none )
 
 
-handleMessage : ( ServerName, Irc.Message ) -> Model -> ( Model, Cmd Msg )
-handleMessage (serverName, parsedMsg) model =
+handleMessage : ServerName -> Irc.Message -> Date -> Model -> ( Model, Cmd Msg )
+handleMessage serverName parsedMsg date model =
     case getServer model ( serverName, "" ) of
         Just s ->
             case parsedMsg of
-                Irc.Ping s ->
-                    update ( SendRawLine serverName ("PONG " ++ s) ) model
+                Irc.Ping x ->
+                    update ( SendRawLine serverName ("PONG " ++ x) ) model
+
                 Irc.Joined { who, channel } ->
                     let
                         user = { nick = who.nick
@@ -90,15 +99,32 @@ handleMessage (serverName, parsedMsg) model =
                                , name = who.realname
                                }
 
-                        chanInfo = getChannel model ( serverName, channel )
+                        serverChan = ( serverName, channel)
+                        chanInfo = getChannel model serverChan
                                  |> Maybe.withDefault ( Model.newChannel channel )
 
                         chanInfo_ = { chanInfo | users = D.insert who.nick user chanInfo.users }
+                        model_ = setChannel serverChan chanInfo_ model
                     in
+                        ( { model_ | current = Just serverChan }, Cmd.none )
 
-                        ( setChannel ( serverName, channel) chanInfo_ model, Cmd.none )
-                _ ->
-                    ( model, Cmd.none )
+                Irc.Privmsg { from, target, text } ->
+                  case getChannel model ( serverName, target ) of
+                      Just chanInfo ->
+                        let
+                          newLine = { ts = date, nick = from.nick, message = text }
+                          chanInfo_ = { chanInfo | buffer = (newLine :: chanInfo.buffer) }
+                        in
+                            ( setChannel (serverName, target) chanInfo_ model, Cmd.none )
+
+                      Nothing ->
+                        -- TODO: create buffer for chan?
+                        Debug.log "need to add a new channel here" ( model, Cmd.none )
+
+                msg ->
+                  let
+                    _ = Debug.log "unknown msg" msg
+                  in
+                      ( model, Cmd.none )
         Nothing ->
-            Debug.log "getServer was none?"
-            ( model, Cmd.none )
+            Debug.log "getServer was none?" ( model, Cmd.none )

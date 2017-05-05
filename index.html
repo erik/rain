@@ -31,8 +31,9 @@
 
   app.ports.parse_raw.subscribe(args => {
       let [server, line] = args
-      let p = parse_irc(line)
+      let p = parse_irc(line.replace(/[\r\n]/g, ''))
       p.time = +(new Date(p.tags.time) || new Date())
+      p.prefix = p.prefix || ''
 
       console.log('parsed_message:', server, p)
 

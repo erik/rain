@@ -47,7 +47,9 @@ type alias Model =
 
 initialModel : Model
 initialModel =
-  { serverInfo = Dict.fromList []
+  { serverInfo = Dict.fromList
+      [
+      ]
   , channelInfo = Dict.fromList []
   , current = Nothing
   }
@@ -79,6 +81,14 @@ setChannel sc chan model =
 getChannel : Model -> ServerChannel -> Maybe ChannelInfo
 getChannel model sc =
   D.get sc model.channelInfo
+
+getActive : Model -> Maybe (ServerInfo, ChannelInfo)
+getActive model =
+  let
+    server = getActiveServer model
+    channel = getActiveChannel model
+  in
+      Maybe.map2 (\s c -> (s, c)) server channel
 
 
 getActiveChannel : Model -> Maybe ChannelInfo

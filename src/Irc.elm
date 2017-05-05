@@ -62,10 +62,21 @@ type Message
 
 parseUser : String -> User
 parseUser prefix =
-  { isServer = False
-  , nick = "foo"
-  , hostname = "host"
-  , realname = "foo"
+  let
+    (nick, rest) =
+      case String.split "!" prefix of
+          [nick, rest] -> (nick, rest)
+          _ -> ("", prefix)
+
+    (real, host) =
+      case String.split "@" rest of
+          [real, host] -> (real, host)
+          _ -> ("", rest)
+  in
+      { isServer = nick == ""
+      , nick = nick
+      , hostname = host
+      , realname = real
   }
 
 parse : ParsedMessage -> (Date.Date, Message)
@@ -94,6 +105,18 @@ parse msg =
                   Notice { from = user
                          , target = Maybe.withDefault "" target
                          , text = Maybe.withDefault "" text
+                         }
+            "JOIN" ->
+              let
+                user = { isServer = False
+                       , nick = "[me]"
+                       , hostname = ""
+                       , realname = ""
+                       }
+                target = get 0 msg.params
+              in
+                  Joined { who = user
+                         , channel = Maybe.withDefault "what" target
                          }
             _ ->
               Unknown msg
