@@ -3,6 +3,10 @@
 <head>
   <title>Rain IRC</title>
 
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="//writ.cmcenroe.me/1.0.4/writ.min.css">
+
   <script src="main.js"></script>
   <script src="irc-parse.js"></script>
 </head>
@@ -21,8 +25,6 @@
   }
 </style>
 
-<h1>chat?</h1>
-
 <div id="main"></div>
 
 <script>
@@ -32,7 +34,7 @@
   app.ports.parse_raw.subscribe(args => {
       let [server, line] = args
       let p = parse_irc(line.replace(/[\r\n]/g, ''))
-      p.time = +(new Date(p.tags.time) || new Date())
+      p.time = p.tags.time ? +new Date(p.tags.time) : Date.now()
       p.prefix = p.prefix || ''
 
       console.log('parsed_message:', server, p)

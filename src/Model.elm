@@ -90,7 +90,6 @@ getActive model =
   in
       Maybe.map2 (\s c -> (s, c)) server channel
 
-
 getActiveChannel : Model -> Maybe ChannelInfo
 getActiveChannel model =
   model.current

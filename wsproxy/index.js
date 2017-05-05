@@ -46,7 +46,7 @@ wss.on('connection', function connection(ws) {
     })
               .setEncoding('utf8')
               .on('data', (data) => {
-                  console.log(data);
+                  console.log(data.replace(/[\r\n]+/, ''));
                   ws.send(data);
               })
               .on('end', () => { ws.close(); });

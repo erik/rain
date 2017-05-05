@@ -48,6 +48,7 @@ type Message
         channel : String,
         text : Maybe String
     }
+  | TopicIs { text: String, channel : String }
   | Nick {
         who : User,
         nick : String
@@ -86,6 +87,7 @@ parse msg =
     m = case msg.command of
             "PING" ->
               Ping (String.join " " (toList msg.params))
+
             "PRIVMSG" ->
               let
                 user = parseUser msg.prefix
@@ -108,16 +110,20 @@ parse msg =
                          }
             "JOIN" ->
               let
-                user = { isServer = False
-                       , nick = "[me]"
-                       , hostname = ""
-                       , realname = ""
-                       }
+                user = parseUser msg.prefix
                 target = get 0 msg.params
               in
                   Joined { who = user
                          , channel = Maybe.withDefault "what" target
                          }
+            "332" ->
+              let
+                target = get 1 msg.params
+                topic = get 2 msg.params
+              in
+                  TopicIs { text = Maybe.withDefault "what" topic
+                          , channel = Maybe.withDefault "what" target
+                          }
             _ ->
               Unknown msg
   in

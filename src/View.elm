@@ -1,10 +1,9 @@
 module View exposing (view)
 
-import Date
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (id) --, class, type_, placeholder, value, autocomplete)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, onSubmit)
 
 import Dict.Extra exposing (groupBy, mapKeys)
 
@@ -54,14 +53,16 @@ viewChannel : Model -> (ServerInfo, ChannelInfo) -> Html Msg
 viewChannel model (server, channel) =
   div []
     [ viewTopic channel
+    , input [ onSubmit (SendRawLine "mozilla" channel.inputLine)
+            , onInput TypeLine
+            ] []
     , viewBuffer channel
-    , input [ onInput TypeLine ] []
     ]
 
 
 viewTopic : ChannelInfo -> Html Msg
 viewTopic channel =
-  span [] [ text <| Maybe.withDefault "[unset]" channel.topic  ]
+  pre [] [ text <| Maybe.withDefault "[unset]" channel.topic  ]
 
 
 viewBuffer : ChannelInfo -> Html Msg
@@ -70,10 +71,17 @@ viewBuffer channel =
       lines = channel.buffer
             |> List.map viewLine
     in
-        div [] lines
+        ul [] lines
 
 viewLine : Line -> Html Msg
 viewLine line =
-  div [] [ div [] [ text line.nick ++ " at " ++ (Date.toString line.ts)
-                  ]
-         , div [] [ p [] [ text line.message ]]]
+  let
+    timeStr = toString line.ts
+  in
+      li []
+        [ div [] [
+             div [] [ em [] [ text line.nick ]
+                    , small [] [ text <| " at " ++ timeStr]
+                    ]
+            ]
+        , div [] [ span [] [ text line.message ]]]

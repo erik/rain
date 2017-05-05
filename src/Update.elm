@@ -121,6 +121,17 @@ handleMessage serverName parsedMsg date model =
                         -- TODO: create buffer for chan?
                         Debug.log "need to add a new channel here" ( model, Cmd.none )
 
+                Irc.TopicIs { channel, text } ->
+                  case getChannel model ( serverName, channel ) of
+                      Just chanInfo ->
+                        let
+                          _ = Debug.log <| channel ++ "topic is" ++ text
+                          chanInfo_ = { chanInfo | topic = Just text }
+                        in
+                            ( setChannel (serverName, channel) chanInfo_ model, Cmd.none )
+                      Nothing ->
+                        Debug.log "need to add new channel here" ( model, Cmd.none )
+
                 msg ->
                   let
                     _ = Debug.log "unknown msg" msg
