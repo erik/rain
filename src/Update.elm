@@ -3,9 +3,9 @@ module Update exposing (Msg(..), update)
 import Date exposing (Date)
 import Debug
 import Dict as D
-import WebSocket
 import Irc
 import Model exposing (..)
+import WebSocket
 
 
 type Msg

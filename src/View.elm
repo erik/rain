@@ -1,13 +1,14 @@
 module View exposing (view)
 
+import Date.Format as Date
 import Dict
+import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
-import Html.Attributes exposing (id, href)
+import Html.Attributes exposing (id, href, class)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
 import Json.Decode as Json
-import Regex exposing (HowMany(All), regex)
-import Dict.Extra exposing (groupBy, mapKeys)
 import Model exposing (..)
+import Regex exposing (HowMany(All), regex)
 import Update exposing (Msg(..))
 
 
@@ -99,23 +100,24 @@ viewBuffer channel =
             channel.buffer
                 |> List.map viewLine
     in
-        ul [ id "buffer-view" ] lines
+        div [ id "buffer-view" ] lines
 
 
 viewLine : Line -> Html Msg
 viewLine line =
     let
         timeStr =
-            toString line.ts
+            Date.format "%H:%M:%S" line.ts
     in
-        li []
+        div [ class "message-group" ]
             [ div []
                 [ div []
-                    [ em [] [ text line.nick ]
-                    , small [] [ text <| " at " ++ timeStr ]
+                    [ small [ class "timestamp" ] [ text timeStr ]
+                    , span [] [ text " " ]
+                    , em [] [ text line.nick ]
                     ]
                 ]
-            , div [] [ span [] (formatLine line.message) ]
+            , blockquote [] [ span [] (formatLine line.message) ]
             ]
 
 
