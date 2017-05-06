@@ -2,9 +2,10 @@ module View exposing (view)
 
 import Dict
 import Html exposing (..)
-import Html.Attributes exposing (id) --, class, type_, placeholder, value, autocomplete)
+import Html.Attributes exposing (id, href)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
 import Json.Decode as Json
+import Regex exposing (HowMany(All), regex)
 
 import Dict.Extra exposing (groupBy, mapKeys)
 
@@ -102,4 +103,16 @@ viewLine line =
                     , small [] [ text <| " at " ++ timeStr]
                     ]
             ]
-        , div [] [ span [] [ text line.message ]]]
+        , div [] [ span [] ( formatLine line.message ) ]]
+
+formatLine : String -> List (Html Msg)
+formatLine line =
+  let
+    split = Regex.split All (regex "(\\s+)") line
+    linkify word =
+      if String.contains "://" word then
+        a [ href word ] [ text word ]
+      else
+        text word
+  in
+    List.map linkify split
