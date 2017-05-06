@@ -80,6 +80,11 @@ getChannel : Model -> ServerChannel -> Maybe ChannelInfo
 getChannel model sc =
   D.get sc model.channelInfo
 
+getOrCreateChannel : Model -> ServerChannel -> ChannelInfo
+getOrCreateChannel model (serverName, channelName) =
+  getChannel model (serverName, channelName)
+    |> Maybe.withDefault (newChannel channelName)
+
 getActive : Model -> Maybe (ServerInfo, ChannelInfo)
 getActive model =
   let

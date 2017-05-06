@@ -25,9 +25,29 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SendLine ->
-            -- TODO: need to implement this
-            ( model, Cmd.none )
+        AddServer ( serverName, info ) ->
+          let
+            serverInfo_ = model.serverInfo
+                       |> D.insert serverName info
+            model_ = { model | serverInfo = serverInfo_ }
+          in
+            ( model_, Cmd.none )
+
+        SendLine serverInfo chanInfo line ->
+          let
+            rawLine =
+              case String.split " " line of
+                "/join" :: rest ->
+                  String.join " " ("JOIN" :: rest)
+                "/part" :: rest ->
+                  String.join " " ("PART" :: rest)
+                "/privmsg" :: rest ->
+                  String.join " " ("PRIVMSG" :: rest)
+                _ ->
+                  String.join " " [ "PRIVMSG", chanInfo.name, line]
+
+          in
+            update (SendRawLine serverInfo rawLine ) model
 
         TypeLine str ->
             case (model.current, getActiveChannel model) of
@@ -44,14 +64,8 @@ update msg model =
                     ( model, Cmd.none )
 
 
-        SendRawLine serverName line ->
-            case getActiveServer model of
-                Just server ->
-                    ( model, WebSocket.send server.socket line )
-                Nothing ->
-                    Debug.log "getServer was none?"
-                    ( model, Cmd.none )
-
+        SendRawLine serverInfo line ->
+          ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
           ( model, Irc.parse_raw (serverName, line) )
@@ -87,10 +101,10 @@ update msg model =
 handleMessage : ServerName -> Irc.Message -> Date -> Model -> ( Model, Cmd Msg )
 handleMessage serverName parsedMsg date model =
     case getServer model ( serverName, "" ) of
-        Just s ->
+        Just serverInfo ->
             case parsedMsg of
                 Irc.Ping x ->
-                    update ( SendRawLine serverName ("PONG " ++ x) ) model
+                    update ( SendRawLine serverInfo ("PONG " ++ x) ) model
 
                 Irc.Joined { who, channel } ->
                     let
@@ -110,28 +124,20 @@ handleMessage serverName parsedMsg date model =
                         ( { model_ | current = Just serverChan }, Cmd.none )
 
                 Irc.Privmsg { from, target, text } ->
-                  case getChannel model ( serverName, target ) of
-                      Just chanInfo ->
-                        let
-                          newLine = { ts = date, nick = from.nick, message = text }
-                          chanInfo_ = { chanInfo | buffer = (newLine :: chanInfo.buffer) }
-                        in
-                            ( setChannel (serverName, target) chanInfo_ model, Cmd.none )
-
-                      Nothing ->
-                        -- TODO: create buffer for chan?
-                        Debug.log "need to add a new channel here" ( model, Cmd.none )
+                  let
+                    chanInfo = getOrCreateChannel model (serverName, target)
+                    newLine = { ts = date, nick = from.nick, message = text }
+                    chanInfo_ = { chanInfo | buffer = (newLine :: chanInfo.buffer) }
+                  in
+                    ( setChannel (serverName, target) chanInfo_ model, Cmd.none )
 
                 Irc.TopicIs { channel, text } ->
-                  case getChannel model ( serverName, channel ) of
-                      Just chanInfo ->
-                        let
-                          _ = Debug.log <| channel ++ "topic is" ++ text
-                          chanInfo_ = { chanInfo | topic = Just text }
-                        in
-                            ( setChannel (serverName, channel) chanInfo_ model, Cmd.none )
-                      Nothing ->
-                        Debug.log "need to add new channel here" ( model, Cmd.none )
+                  let
+                    chanInfo = getOrCreateChannel model ( serverName, channel )
+                    _ = Debug.log <| channel ++ "topic is" ++ text
+                    chanInfo_ = { chanInfo | topic = Just text }
+                  in
+                    ( setChannel (serverName, channel) chanInfo_ model, Cmd.none )
 
                 msg ->
                   let
