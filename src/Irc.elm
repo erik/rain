@@ -92,6 +92,11 @@ parse msg =
               let
                 user = parseUser msg.prefix
                 target = get 0 msg.params
+                       |> Maybe.map (\x -> if String.startsWith "#" x then
+                                             x
+                                           else
+                                             user.nick)
+
                 text = get 1 msg.params
               in
                   Privmsg { from = user
