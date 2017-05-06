@@ -38,10 +38,14 @@ viewChannelList model =
                 |> List.map
                    (\((sName, cName), chans) ->
                     li [] [ text sName
-                          , ul [] (List.map
-                                       (\(_, chanInfo) ->
-                                            li [] [ text chanInfo.name ])
-                                       chans)
+                          , ul []
+                            (List.map
+                               (\(_, chanInfo) ->
+                                  li [] [
+                                     a [ onClick (SelectChannel sName cName) ]
+                                       [ text chanInfo.name ]
+                                    ])
+                               chans)
                           ]
                    )
 
