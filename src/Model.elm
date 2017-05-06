@@ -1,4 +1,4 @@
-module Model exposing (..)
+port module Model exposing (..)
 
 import Date exposing (Date)
 import Dict exposing (Dict)
@@ -47,9 +47,7 @@ type alias Model =
 
 initialModel : Model
 initialModel =
-  { serverInfo = Dict.fromList
-      [
-      ]
+  { serverInfo = Dict.fromList []
   , channelInfo = Dict.fromList []
   , current = Nothing
   }
@@ -100,3 +98,8 @@ getActiveServer : Model -> Maybe ServerInfo
 getActiveServer model =
   model.current
     |> Maybe.andThen (getServer model)
+
+
+-- ports
+
+port saved_servers : ((ServerName, ServerInfo) -> msg) -> Sub msg

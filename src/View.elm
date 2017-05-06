@@ -3,7 +3,8 @@ module View exposing (view)
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (id) --, class, type_, placeholder, value, autocomplete)
-import Html.Events exposing (onInput, onSubmit)
+import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
+import Json.Decode as Json
 
 import Dict.Extra exposing (groupBy, mapKeys)
 
@@ -19,12 +20,11 @@ view model =
           Just serverChan ->
             viewChannel model serverChan
           Nothing ->
-            h1 [] [ text "nothing has happened yet" ]
+            div [] [ text "nothing." ]
   in
-      div []
-        [ viewChannelList model
-        , chatView
-        ]
+      div [] [ viewChannelList model
+             , chatView
+             ]
 
 viewChannelList : Model -> Html Msg
 viewChannelList model =
@@ -53,16 +53,30 @@ viewChannel : Model -> (ServerInfo, ChannelInfo) -> Html Msg
 viewChannel model (server, channel) =
   div []
     [ viewTopic channel
-    , input [ onSubmit (SendRawLine "mozilla" channel.inputLine)
+    , input [ id "input-line"
             , onInput TypeLine
+            , onEnter (SendLine server channel channel.inputLine)
             ] []
     , viewBuffer channel
     ]
 
 
+-- Cribbed from elm-todo
+onEnter : Msg -> Attribute Msg
+onEnter msg =
+  let
+    isEnter code =
+      if code == 13 then
+        Json.succeed msg
+      else
+        Json.fail "not ENTER"
+  in
+    on "keydown" (Json.andThen isEnter keyCode)
+
+
 viewTopic : ChannelInfo -> Html Msg
 viewTopic channel =
-  pre [] [ text <| Maybe.withDefault "[unset]" channel.topic  ]
+  small [] [ text <| Maybe.withDefault "[unset]" channel.topic  ]
 
 
 viewBuffer : ChannelInfo -> Html Msg
@@ -71,7 +85,7 @@ viewBuffer channel =
       lines = channel.buffer
             |> List.map viewLine
     in
-        ul [] lines
+        ul [ id "buffer-view" ] lines
 
 viewLine : Line -> Html Msg
 viewLine line =

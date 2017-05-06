@@ -10,9 +10,10 @@ import Model exposing (..)
 
 
 type Msg
-  = SendLine
+  = AddServer ( ServerName, ServerInfo )
+  | SendLine ServerInfo ChannelInfo String
   | TypeLine String
-  | SendRawLine ServerName String
+  | SendRawLine ServerInfo String
   | ReceiveRawLine  ServerName String
   | ReceiveLine ( ServerName, Irc.ParsedMessage )
   | CreateChannel ServerName ChannelName

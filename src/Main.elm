@@ -27,12 +27,13 @@ init =
 subscriptions : Model -> Sub Msg
 subscriptions model =
   let
-    -- FIXME: this is ugly, gotta be a better way
-    recvIrc = Irc.irc_messages ReceiveLine
+    -- Establish all of our open websocket connections
     recvWs = model.serverInfo
            |> Dict.toList
            |> List.map (\(serverName, info) ->
                             WebSocket.listen info.socket
                             (\n -> ReceiveRawLine serverName n))
   in
-      Sub.batch (recvIrc :: recvWs)
+    Sub.batch ([ Irc.irc_messages ReceiveLine
+               , Model.saved_servers AddServer
+               ] ++ recvWs)
