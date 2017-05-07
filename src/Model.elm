@@ -1,8 +1,8 @@
 port module Model exposing (..)
 
 import Date exposing (Date)
-import Dict exposing (Dict)
 import Dict as D
+import Dict exposing (Dict)
 
 
 type alias ServerName =
@@ -31,8 +31,15 @@ type alias Line =
     }
 
 
+type alias LineGroup =
+    { ts : Date.Date
+    , nick : String
+    , messages : List Line
+    }
+
+
 type alias Buffer =
-    List Line
+    List LineGroup
 
 
 type alias UserInfo =
@@ -131,6 +138,20 @@ getActiveServer : Model -> Maybe ServerInfo
 getActiveServer model =
     model.current
         |> Maybe.andThen (getServer model)
+
+
+appendLine : List LineGroup -> Line -> List LineGroup
+appendLine groups line =
+    case groups of
+        [] ->
+            { ts = line.ts, nick = line.nick, messages = [ line ] } :: []
+
+        hd :: rest ->
+            if hd.nick == line.nick then
+                { hd | messages = line :: hd.messages } :: rest
+            else
+                [ { ts = line.ts, nick = line.nick, messages = [ line ] }, hd ]
+                    ++ rest
 
 
 

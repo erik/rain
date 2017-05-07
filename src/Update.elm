@@ -150,7 +150,7 @@ handleMessage serverName parsedMsg date model =
                             { ts = date, nick = from.nick, message = text }
 
                         chanInfo_ =
-                            { chanInfo | buffer = (newLine :: chanInfo.buffer) }
+                            { chanInfo | buffer = appendLine chanInfo.buffer newLine }
                     in
                         ( setChannel ( serverName, target ) chanInfo_ model, Cmd.none )
 

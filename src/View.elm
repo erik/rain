@@ -4,7 +4,7 @@ import Date.Format as Date
 import Dict
 import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class)
+import Html.Attributes exposing (id, href, class, title)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
 import Json.Decode as Json
 import Model exposing (..)
@@ -98,34 +98,44 @@ viewBuffer channel =
     let
         lines =
             channel.buffer
-                |> List.map viewLine
+                -- TODO: |> List.reverse
+                |> List.map viewLineGroup
     in
         div [ id "buffer-view" ] lines
 
 
-viewLine : Line -> Html Msg
-viewLine line =
+viewLineGroup : LineGroup -> Html Msg
+viewLineGroup group =
     let
         timeStr =
-            Date.format "%H:%M:%S" line.ts
-    in
-        div [ class "message-group" ]
-            [ div []
-                [ div []
-                    [ small [ class "timestamp" ] [ text timeStr ]
-                    , span [] [ text " " ]
-                    , em [] [ text line.nick ]
-                    ]
+            Date.format "%H:%M:%S" group.ts
+
+        groupHead =
+            div [ class "group-head" ]
+                [ small [ class "timestamp" ] [ text timeStr ]
+                , span [] [ text " " ]
+                , b [] [ text group.nick ]
                 ]
-            , blockquote [] [ span [] (formatLine line.message) ]
+
+        messages =
+            List.map formatLine group.messages
+
+        -- (\m -> blockquote [] (formatLine m.message))
+    in
+        div [ class "group" ]
+            [ groupHead
+            , div [ class "group-messages" ] messages
             ]
 
 
-formatLine : String -> List (Html Msg)
+formatLine : Line -> Html Msg
 formatLine line =
     let
+        timeStr =
+            Date.format "%H:%M:%S" line.ts
+
         split =
-            Regex.split All (regex "(\\s+)") line
+            Regex.split All (regex "(\\s+)") line.message
 
         linkify word =
             if String.contains "://" word then
@@ -133,4 +143,5 @@ formatLine line =
             else
                 text word
     in
-        List.map linkify split
+        blockquote [ title timeStr ]
+            (List.map linkify split)
