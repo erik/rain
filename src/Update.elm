@@ -3,8 +3,10 @@ module Update exposing (Msg(..), update)
 import Date exposing (Date)
 import Debug
 import Dict as D
+import Dom.Scroll
 import Irc
 import Model exposing (..)
+import Task
 import WebSocket
 
 
@@ -18,6 +20,7 @@ type Msg
     | CreateChannel ServerName ChannelName
     | SelectChannel ServerName ChannelName
     | CloseChannel ServerName ChannelName
+    | RefreshScroll
     | Noop
 
 
@@ -104,6 +107,9 @@ update msg model =
                     Debug.log "tried to select a bad channel?"
                         ( model, Cmd.none )
 
+        RefreshScroll ->
+            ( model, Task.attempt (\_ -> Noop) (Dom.Scroll.toBottom "buffer-view") )
+
         _ ->
             -- TODO: handle these cases
             ( model, Cmd.none )
@@ -151,8 +157,11 @@ handleMessage serverName parsedMsg date model =
 
                         chanInfo_ =
                             { chanInfo | buffer = appendLine chanInfo.buffer newLine }
+
+                        model_ =
+                            setChannel ( serverName, target ) chanInfo_ model
                     in
-                        ( setChannel ( serverName, target ) chanInfo_ model, Cmd.none )
+                        update RefreshScroll model_
 
                 Irc.TopicIs { channel, text } ->
                     let

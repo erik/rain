@@ -144,11 +144,11 @@ appendLine : List LineGroup -> Line -> List LineGroup
 appendLine groups line =
     case groups of
         [] ->
-            { ts = line.ts, nick = line.nick, messages = [ line ] } :: []
+            [ { ts = line.ts, nick = line.nick, messages = [ line ] } ]
 
         hd :: rest ->
             if hd.nick == line.nick then
-                { hd | messages = line :: hd.messages } :: rest
+                { hd | messages = hd.messages ++ [ line ] } :: rest
             else
                 [ { ts = line.ts, nick = line.nick, messages = [ line ] }, hd ]
                     ++ rest

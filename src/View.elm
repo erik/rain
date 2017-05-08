@@ -61,14 +61,15 @@ viewChannelList model =
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
 viewChannel model ( server, channel ) =
     div []
-        [ viewTopic channel
+        [ h1 [] [ text channel.name ]
+        , viewTopic channel
+        , viewBuffer channel
         , input
             [ id "input-line"
             , onInput TypeLine
             , onEnter (SendLine server channel channel.inputLine)
             ]
             []
-        , viewBuffer channel
         ]
 
 
@@ -90,7 +91,7 @@ onEnter msg =
 
 viewTopic : ChannelInfo -> Html Msg
 viewTopic channel =
-    small [] [ text <| Maybe.withDefault "[unset]" channel.topic ]
+    div [ id "topic" ] [ text <| Maybe.withDefault "[unset]" channel.topic ]
 
 
 viewBuffer : ChannelInfo -> Html Msg
@@ -98,7 +99,7 @@ viewBuffer channel =
     let
         lines =
             channel.buffer
-                -- TODO: |> List.reverse
+                |> List.reverse
                 |> List.map viewLineGroup
     in
         div [ id "buffer-view" ] lines
@@ -119,8 +120,6 @@ viewLineGroup group =
 
         messages =
             List.map formatLine group.messages
-
-        -- (\m -> blockquote [] (formatLine m.message))
     in
         div [ class "group" ]
             [ groupHead
@@ -143,5 +142,5 @@ formatLine line =
             else
                 text word
     in
-        blockquote [ title timeStr ]
+        div [ title timeStr ]
             (List.map linkify split)
