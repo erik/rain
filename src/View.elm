@@ -6,6 +6,7 @@ import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
 import Html.Attributes exposing (id, href, class, title)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
+import Html.Lazy exposing (lazy)
 import Json.Decode as Json
 import Model exposing (..)
 import Regex exposing (HowMany(All), regex)
@@ -55,15 +56,15 @@ viewChannelList model =
                             ]
                     )
     in
-        div [ id "channelList" ] [ ul [] list ]
+        aside [ id "channelList" ] [ ul [] list ]
 
 
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
 viewChannel model ( server, channel ) =
-    div []
+    div [ id "channel-view" ]
         [ h1 [] [ text channel.name ]
         , viewTopic channel
-        , viewBuffer channel
+        , lazy viewBuffer channel
         , input
             [ id "input-line"
             , onInput TypeLine
