@@ -53,25 +53,18 @@ update msg model =
 
                         _ ->
                             String.join " " [ "PRIVMSG", chanInfo.name, line ]
+
+                model_ =
+                    { model | inputLine = "" }
             in
-                update (SendRawLine serverInfo rawLine) model
+                update (SendRawLine serverInfo rawLine) model_
 
         TypeLine str ->
-            case ( model.current, getActiveChannel model ) of
-                ( Just current, Just chan ) ->
-                    let
-                        channel_ =
-                            { chan | inputLine = str }
-
-                        model_ =
-                            setChannel current channel_ model
-                    in
-                        ( model_, Cmd.none )
-
-                _ ->
-                    -- TODO: handle this?
-                    Debug.log "getChannel was none?"
-                        ( model, Cmd.none )
+            let
+                model_ =
+                    { model | inputLine = str }
+            in
+                ( model_, Cmd.none )
 
         SendRawLine serverInfo line ->
             ( model, WebSocket.send serverInfo.socket line )

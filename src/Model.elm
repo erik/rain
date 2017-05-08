@@ -57,7 +57,6 @@ type alias ChannelInfo =
     , users : Dict String UserInfo
     , topic : Maybe String
     , buffer : Buffer
-    , inputLine : String
     }
 
 
@@ -65,6 +64,7 @@ type alias Model =
     { serverInfo : Dict ServerName ServerInfo
     , channelInfo : Dict ServerChannel ChannelInfo
     , current : Maybe ServerChannel
+    , inputLine : String
     }
 
 
@@ -73,6 +73,7 @@ initialModel =
     { serverInfo = Dict.fromList []
     , channelInfo = Dict.fromList []
     , current = Nothing
+    , inputLine = ""
     }
 
 
@@ -92,7 +93,6 @@ newChannel name =
     , users = Dict.empty
     , topic = Nothing
     , buffer = []
-    , inputLine = ""
     }
 
 

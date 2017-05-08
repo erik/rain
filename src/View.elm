@@ -4,7 +4,7 @@ import Date.Format as Date
 import Dict
 import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class, title)
+import Html.Attributes exposing (id, href, class, title, value)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
 import Html.Lazy exposing (lazy)
 import Json.Decode as Json
@@ -25,7 +25,8 @@ view model =
                     div [] [ text "nothing." ]
     in
         div []
-            [ div [] [] -- TODO: make this useful. viewChannelList model
+            [ div [] [] -- TODO: make this useful.
+            , viewChannelList model
             , chatView
             ]
 
@@ -69,7 +70,8 @@ viewChannel model ( server, channel ) =
         , input
             [ id "input-line"
             , onInput TypeLine
-            , onEnter (SendLine server channel channel.inputLine)
+            , onEnter (SendLine server channel model.inputLine)
+            , value model.inputLine
             ]
             []
         ]
