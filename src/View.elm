@@ -25,7 +25,7 @@ view model =
                     div [] [ text "nothing." ]
     in
         div []
-            [ viewChannelList model
+            [ div [] [] -- TODO: make this useful. viewChannelList model
             , chatView
             ]
 
@@ -62,8 +62,9 @@ viewChannelList model =
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
 viewChannel model ( server, channel ) =
     div [ id "channel-view" ]
-        [ h1 [] [ text channel.name ]
+        [ h3 [] [ text channel.name ]
         , viewTopic channel
+        , hr [] []
         , lazy viewBuffer channel
         , input
             [ id "input-line"
@@ -74,10 +75,9 @@ viewChannel model ( server, channel ) =
         ]
 
 
-
--- Cribbed from elm-todo
-
-
+{-| Handle key enter presses.
+Cribbed from elm-todo
+-}
 onEnter : Msg -> Attribute Msg
 onEnter msg =
     let
