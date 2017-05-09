@@ -8,6 +8,7 @@ import Irc
 import Model exposing (..)
 import Task
 import WebSocket
+import Ports
 
 
 type Msg
@@ -70,7 +71,7 @@ update msg model =
             ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
-            ( model, Irc.parse_raw ( serverName, line ) )
+            ( model, Ports.parse_raw ( serverName, line ) )
 
         ReceiveLine ( serverName, parsed ) ->
             let
@@ -159,7 +160,7 @@ handleMessage serverName parsedMsg date model =
 
                         cmdNotify =
                             if String.contains serverInfo.nick text then
-                                Model.send_notification ( chanInfo.name, text )
+                                Ports.send_notification ( chanInfo.name, text )
                             else
                                 Cmd.none
                     in

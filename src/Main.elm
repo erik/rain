@@ -3,10 +3,10 @@ module Main exposing (..)
 import Dict
 import Html exposing (..)
 import WebSocket
-import Irc exposing (Message)
 import Model exposing (Model, initialModel)
 import Update exposing (update, Msg(..))
 import View exposing (view)
+import Ports
 
 
 main : Program Never Model Msg
@@ -38,8 +38,8 @@ subscriptions model =
                     )
     in
         Sub.batch
-            ([ Irc.irc_messages ReceiveLine
-             , Model.saved_servers AddServer
+            ([ Ports.irc_messages ReceiveLine
+             , Ports.saved_servers AddServer
              ]
                 ++ recvWs
             )

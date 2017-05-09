@@ -1,4 +1,4 @@
-port module Model exposing (..)
+module Model exposing (..)
 
 import Date exposing (Date)
 import Dict as D
@@ -152,13 +152,3 @@ appendLine groups line =
             else
                 [ { ts = line.ts, nick = line.nick, messages = [ line ] }, hd ]
                     ++ rest
-
-
-
--- ports
-
-
-port saved_servers : (( ServerName, ServerInfo ) -> msg) -> Sub msg
-
-
-port send_notification : ( String, String ) -> Cmd msg
