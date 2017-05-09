@@ -4,7 +4,7 @@ import Date.Format as Date
 import Dict
 import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class, title, value)
+import Html.Attributes exposing (id, href, class, title, target, value)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
 import Html.Lazy exposing (lazy)
 import Json.Decode as Json
@@ -141,7 +141,7 @@ formatLine line =
 
         linkify word =
             if String.contains "://" word then
-                a [ href word ] [ text word ]
+                a [ href word, target "_blank" ] [ text word ]
             else
                 text word
     in
