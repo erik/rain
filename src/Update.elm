@@ -153,8 +153,17 @@ handleMessage serverName parsedMsg date model =
 
                         model_ =
                             setChannel ( serverName, target ) chanInfo_ model
+
+                        cmdRefresh =
+                            Cmd.map (always RefreshScroll) Cmd.none
+
+                        cmdNotify =
+                            if String.contains serverInfo.nick text then
+                                Model.send_notification ( chanInfo.name, text )
+                            else
+                                Cmd.none
                     in
-                        update RefreshScroll model_
+                        ( model_, Cmd.batch [ cmdRefresh, cmdNotify ] )
 
                 Irc.TopicIs { channel, text } ->
                     let

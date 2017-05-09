@@ -1,7 +1,7 @@
 <!doctype html>
 
 <head>
-  <title>Rain IRC</title>
+  <title>Rain</title>
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,6 +44,13 @@
  .timestamp {
      float: right;
  }
+
+ aside {
+     position: absolute;
+     top: 0;
+     left: 0;
+ }
+
 </style>
 
 <body>
@@ -51,25 +58,32 @@
 </body>
 
 <script>
-  let node = document.getElementById('main')
-  let app = Elm.Main.embed(node)
+ let node = document.getElementById('main')
+ let app = Elm.Main.embed(node)
 
-  app.ports.parse_raw.subscribe(args => {
-      let [server, line] = args
-      let p = parse_irc(line.replace(/[\r\n]/g, ''))
-      p.time = p.tags.time ? +new Date(p.tags.time) : Date.now()
-      p.prefix = p.prefix || ''
+ app.ports.parse_raw.subscribe(args => {
+     let [server, line] = args
+     let p = parse_irc(line.replace(/[\r\n]/g, ''))
+     p.time = p.tags.time ? +new Date(p.tags.time) : Date.now()
+     p.prefix = p.prefix || ''
 
-      console.log('parsed_message:', server, p)
+     console.log('parsed_message:', server, p)
 
-      app.ports.irc_messages.send([server, p])
-  })
+     app.ports.irc_messages.send([server, p])
+ })
 
-  // push saved server configuration
-  if (window.localStorage.savedServers) {
-      let saved = JSON.parse(window.localStorage.savedServers)
-      Object.keys(saved).forEach(k => {
-          app.ports.saved_servers.send([k, saved[k]])
-      })
-  }
+ app.ports.send_notification.subscribe(args => {
+     let [title, message] = args
+
+     let not = new Notification(title, {body: message})
+     setTimeout(not.close.bind(not), 5000)
+ })
+
+ // push saved server configuration
+ if (window.localStorage.savedServers) {
+     let saved = JSON.parse(window.localStorage.savedServers)
+     Object.keys(saved).forEach(k => {
+         app.ports.saved_servers.send([k, saved[k]])
+     })
+ }
 </script>
