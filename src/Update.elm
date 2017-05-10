@@ -22,6 +22,7 @@ type Msg
     | SelectChannel ServerName ChannelName
     | CloseChannel ServerName ChannelName
     | RefreshScroll
+    | SendNotification String String
     | Noop
 
 
@@ -104,9 +105,23 @@ update msg model =
         RefreshScroll ->
             ( model, Task.attempt (\_ -> Noop) (Dom.Scroll.toBottom "buffer-view") )
 
+        SendNotification title message ->
+            ( model, Ports.send_notification ( title, message ) )
+
         _ ->
             -- TODO: handle these cases
             ( model, Cmd.none )
+
+
+{-| Nabbed from <http://stackoverflow.com/a/42050830>
+-}
+andThen : Msg -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+andThen msg ( model, cmd ) =
+    let
+        ( newModel, newCmd ) =
+            update msg model
+    in
+        newModel ! [ cmd, newCmd ]
 
 
 handleMessage : ServerName -> Irc.Message -> Date -> Model -> ( Model, Cmd Msg )
@@ -155,16 +170,14 @@ handleMessage serverName parsedMsg date model =
                         model_ =
                             setChannel ( serverName, target ) chanInfo_ model
 
-                        cmdRefresh =
-                            Cmd.map (always RefreshScroll) Cmd.none
-
                         cmdNotify =
                             if String.contains serverInfo.nick text then
-                                Ports.send_notification ( chanInfo.name, text )
+                                SendNotification target text
                             else
-                                Cmd.none
+                                Noop
                     in
-                        ( model_, Cmd.batch [ cmdRefresh, cmdNotify ] )
+                        update RefreshScroll model_
+                            |> andThen cmdNotify
 
                 Irc.TopicIs { channel, text } ->
                     let
