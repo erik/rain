@@ -13,17 +13,44 @@
 
 <style type="text/css">
  #channel-view {
+     position: relative
+     min-height: 100vh;
+ }
+
+
+ #channel-list {
+     position: fixed;
+     top: 0;
+     left: 0;
+
      height: 100vh;
  }
+
+ #channel-header {
+     position: fixed;
+     top: 0;
+
+     background-color: white;
+     width: 78ch;
+     min-height: 50px;
+ }
+
  #buffer-view {
-     max-height: 70vh;
      overflow-y: scroll;
      word-wrap: break-word;
+     padding-top: 50px;
+     padding-bottom: 50px;
+
+     height: 80vh;
  }
 
  #input-line {
-     width: 100%;
+     position: fixed;
+     bottom: 0;
+     width: 624px;
      line-height: 1.2em;
+     height: 50px;
+     font-size: xx-large;
  }
 
  #topic {

@@ -57,14 +57,16 @@ viewChannelList model =
                             ]
                     )
     in
-        aside [ id "channelList" ] [ ul [] list ]
+        aside [ id "channel-list" ] [ ul [] list ]
 
 
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
 viewChannel model ( server, channel ) =
     div [ id "channel-view" ]
-        [ h3 [] [ text channel.name ]
-        , viewTopic channel
+        [ div [ id "channel-header" ]
+            [ h3 [] [ text channel.name ]
+            , viewTopic channel
+            ]
         , hr [] []
         , lazy viewBuffer channel
         , input
