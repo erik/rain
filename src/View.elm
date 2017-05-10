@@ -4,7 +4,7 @@ import Date.Format as Date
 import Dict
 import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class, title, target, value)
+import Html.Attributes exposing (id, href, class, title, target, value, classList)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
 import Html.Lazy exposing (lazy)
 import Json.Decode as Json
@@ -138,8 +138,22 @@ formatLine line =
         timeStr =
             Date.format "%H:%M:%S" line.ts
 
+        ( message, isAction ) =
+            case String.split ("\x01" ++ "ACTION") line.message of
+                "" :: rest ->
+                    let
+                        message =
+                            rest
+                                |> String.join ""
+                                |> String.dropRight 1
+                    in
+                        ( String.join " " [ line.nick, message ], True )
+
+                _ ->
+                    ( line.message, False )
+
         split =
-            Regex.split All (regex "(\\s+)") line.message
+            Regex.split All (regex "(\\s+)") message
 
         linkify word =
             if String.contains "://" word then
@@ -147,5 +161,11 @@ formatLine line =
             else
                 text word
     in
-        div [ title timeStr ]
+        div
+            [ title timeStr
+            , classList
+                [ ( "highlight", String.contains "erik" message ) -- TODO: remove hardcoded nick
+                , ( "action", isAction )
+                ]
+            ]
             (List.map linkify split)
