@@ -1,5 +1,6 @@
 module Update exposing (Msg(..), update)
 
+import Array
 import Date exposing (Date)
 import Debug
 import Dict as D
@@ -118,7 +119,10 @@ update msg model =
                                 privmsg msg
 
                         _ ->
-                            privmsg line
+                            if String.startsWith "/" line then
+                                ( String.dropLeft 1 line, Noop )
+                            else
+                                privmsg line
 
                 model_ =
                     { model | inputLine = "" }
@@ -230,9 +234,6 @@ handleMessage serverName parsedMsg date model =
 
                 Irc.Privmsg { from, target, text } ->
                     let
-                        chanInfo =
-                            getOrCreateChannel model ( serverName, target )
-
                         newLine =
                             { ts = date, nick = from.nick, message = text }
 
@@ -268,10 +269,33 @@ handleMessage serverName parsedMsg date model =
                     in
                         ( model_, Cmd.none )
 
+                Irc.Unknown msg ->
+                    let
+                        msgText =
+                            msg.params
+                                |> Array.toList
+                                |> List.drop 1
+                                |> String.join " "
+
+                        newLine =
+                            { ts = date
+                            , nick = msg.prefix
+                            , message = String.join ": " [ msg.command, msgText ]
+                            }
+
+                        newMsg =
+                            AddLine serverName serverBufferName newLine
+
+                        _ =
+                            Debug.log "unknown msg" msg
+                    in
+                        update newMsg model
+                            |> andThen RefreshScroll
+
                 msg ->
                     let
                         _ =
-                            Debug.log "unknown msg" msg
+                            Debug.log "unhandled message type" msg
                     in
                         ( model, Cmd.none )
 
