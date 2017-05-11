@@ -53,8 +53,14 @@ update msg model =
                         model_ =
                             setChannel ( serverName, channelName ) chanInfo_ model
 
+                        isChanMsg =
+                            String.startsWith "#" channelName
+
                         cmdNotify =
-                            if String.contains serverInfo.nick line.message then
+                            if
+                                String.contains serverInfo.nick line.message
+                                    || (serverInfo.nick /= line.nick && not isChanMsg)
+                            then
                                 SendNotification channelName line.message
                             else
                                 Noop
@@ -238,6 +244,19 @@ handleMessage serverName parsedMsg date model =
                             { chanInfo | topic = Just text }
                     in
                         ( setChannel ( serverName, channel ) chanInfo_ model, Cmd.none )
+
+                Irc.Nick { who, nick } ->
+                    let
+                        server_ =
+                            if who.nick == serverInfo.nick then
+                                { serverInfo | nick = nick }
+                            else
+                                serverInfo
+
+                        model_ =
+                            { model | serverInfo = D.insert serverName server_ model.serverInfo }
+                    in
+                        ( model_, Cmd.none )
 
                 msg ->
                     let

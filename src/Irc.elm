@@ -153,6 +153,19 @@ parse msg =
                             , channel = Maybe.withDefault "what" target
                             }
 
+                "NICK" ->
+                    let
+                        user =
+                            parseUser msg.prefix
+
+                        nick =
+                            get 0 msg.params
+                    in
+                        Nick
+                            { who = user
+                            , nick = Maybe.withDefault "[bug]" nick
+                            }
+
                 "332" ->
                     let
                         target =
