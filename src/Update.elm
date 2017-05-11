@@ -95,7 +95,11 @@ update msg model =
         SelectChannel serverName channelName ->
             case getChannel model ( serverName, channelName ) of
                 Just _ ->
-                    ( { model | current = Just ( serverName, channelName ) }, Cmd.none )
+                    let
+                        model_ =
+                            { model | current = Just ( serverName, channelName ) }
+                    in
+                        update RefreshScroll model_
 
                 _ ->
                     -- TODO: handle this?
@@ -103,7 +107,7 @@ update msg model =
                         ( model, Cmd.none )
 
         RefreshScroll ->
-            ( model, Task.attempt (\_ -> Noop) (Dom.Scroll.toBottom "buffer-view") )
+            ( model, Task.attempt (\_ -> Noop) (Dom.Scroll.toBottom "body") )
 
         SendNotification title message ->
             ( model, Ports.send_notification ( title, message ) )
