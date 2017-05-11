@@ -100,6 +100,16 @@ update msg model =
                         "/part" :: rest ->
                             ( String.join " " ("PART" :: rest), Noop )
 
+                        "/me" :: rest ->
+                            let
+                                msg =
+                                    String.join " " rest
+
+                                action =
+                                    String.join "" [ "\x01", "ACTION ", msg, "\x01" ]
+                            in
+                                privmsg action
+
                         "/privmsg" :: rest ->
                             let
                                 msg =
