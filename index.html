@@ -13,7 +13,7 @@
 
 <style type="text/css">
  #channel-view {
-     position: relative
+     position: relative;
      min-height: 100vh;
  }
 
@@ -38,18 +38,16 @@
  #buffer-view {
      overflow-y: scroll;
      word-wrap: break-word;
-     padding-top: 50px;
-     padding-bottom: 50px;
-
-     height: 80vh;
+     padding-top: 75px;
+     padding-bottom: 30px;
  }
 
  #input-line {
      position: fixed;
      bottom: 0;
      width: 624px;
-     line-height: 1.2em;
-     height: 50px;
+     padding: 10px;
+     outline: none;
  }
 
  #topic {
@@ -68,12 +66,21 @@
 
  .timestamp {
      float: right;
+     color: #a0a0a0;
  }
 
  .group-messages {
      border: rgba(0,0,0,.05) solid;
      border-width: 0 0 0 .5ch;
      padding-left: .5ch;
+ }
+
+ .message-nick {
+     font-weight: bold;
+ }
+
+ .message-nick-self {
+     font-style: italic;
  }
 
  .highlight {
@@ -90,9 +97,13 @@
      left: 0;
  }
 
+ a {
+     cursor: pointer;
+ }
+
 </style>
 
-<body>
+<body id="body">
     <main id="main"></main>
 </body>
 

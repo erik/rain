@@ -25,8 +25,7 @@ view model =
                     div [] [ text "nothing." ]
     in
         div []
-            [ div [] [] -- TODO: make this useful.
-            , viewChannelList model
+            [ viewChannelList model
             , chatView
             ]
 
@@ -66,8 +65,8 @@ viewChannel model ( server, channel ) =
         [ div [ id "channel-header" ]
             [ h3 [] [ text channel.name ]
             , viewTopic channel
+            , hr [] []
             ]
-        , hr [] []
         , lazy viewBuffer channel
         , input
             [ id "input-line"
@@ -120,7 +119,13 @@ viewLineGroup group =
             div [ class "group-head" ]
                 [ small [ class "timestamp" ] [ text timeStr ]
                 , span [] [ text " " ]
-                , b [] [ text group.nick ]
+                , div
+                    [ classList
+                        [ ( "message-nick", True )
+                        , ( "message-nick-self", False )
+                        ]
+                    ]
+                    [ text group.nick ]
                 ]
 
         messages =
