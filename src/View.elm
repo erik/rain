@@ -3,8 +3,8 @@ module View exposing (view)
 import Date.Format as Date
 import Dict
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class, title, target, value, classList)
-import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
+import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder)
+import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
 import Html.Lazy exposing (lazy)
 import Json.Decode as Json
 import Model exposing (..)
@@ -60,27 +60,47 @@ viewChannel model ( server, channel ) =
         , lazy viewBuffer channel
         , input
             [ id "input-line"
+            , placeholder server.nick
             , onInput TypeLine
-            , onEnter (SendLine server channel model.inputLine)
+            , onInputKey model server channel
             , value model.inputLine
             ]
             []
         ]
 
 
-{-| Handle key enter presses.
+enterKey : number
+enterKey =
+    13
+
+
+tabKey : number
+tabKey =
+    9
+
+
+{-| Handle enter / tab key presses.
 Cribbed from elm-todo
 -}
-onEnter : Msg -> Attribute Msg
-onEnter msg =
+onInputKey : Model -> ServerInfo -> ChannelInfo -> Attribute Msg
+onInputKey model server channel =
     let
-        isEnter code =
-            if code == 13 then
-                Json.succeed msg
+        isKey code =
+            if code == enterKey then
+                SendLine server channel model.inputLine
+                    |> Json.succeed
+            else if code == tabKey then
+                TabCompleteLine server channel
+                    |> Json.succeed
             else
-                Json.fail "not ENTER"
+                Json.fail "nope"
+
+        options =
+            { stopPropagation = False
+            , preventDefault = True
+            }
     in
-        on "keydown" (Json.andThen isEnter keyCode)
+        onWithOptions "keydown" options (Json.andThen isKey keyCode)
 
 
 viewTopic : ChannelInfo -> Html Msg

@@ -3,7 +3,7 @@ module Update exposing (Msg(..), update)
 import Array
 import Date exposing (Date)
 import Debug
-import Dict as D
+import Dict
 import Dom.Scroll
 import Irc
 import Model exposing (..)
@@ -27,6 +27,7 @@ type Msg
     | RefreshScroll
     | SendNotification String String
     | Tick Time
+    | TabCompleteLine ServerInfo ChannelInfo
     | Noop
 
 
@@ -37,7 +38,7 @@ update msg model =
             let
                 serverInfo_ =
                     model.serverInfo
-                        |> D.insert serverName info
+                        |> Dict.insert serverName info
 
                 model_ =
                     { model | serverInfo = serverInfo_ }
@@ -181,6 +182,31 @@ update msg model =
         SendNotification title message ->
             ( model, Ports.send_notification ( title, message ) )
 
+        TabCompleteLine serverInfo channelInfo ->
+            let
+                words =
+                    String.split " " model.inputLine
+
+                lastWord =
+                    case List.reverse words of
+                        word :: _ ->
+                            word
+
+                        _ ->
+                            ""
+
+                -- TODO: should also complete /privmsg etc
+                completions =
+                    channelInfo.users
+                        |> Dict.values
+                        |> List.filter (\u -> String.startsWith lastWord u.nick)
+            in
+                if lastWord == "" then
+                    ( model, Cmd.none )
+                else
+                    -- TODO: handle nick / command completion for real
+                    ( { model | inputLine = model.inputLine ++ "foobar" }, Cmd.none )
+
         Tick time ->
             ( { model | currentTime = time }, Cmd.none )
 
@@ -225,7 +251,7 @@ handleMessage serverName parsedMsg date model =
                                 |> Maybe.withDefault (Model.newChannel channel)
 
                         chanInfo_ =
-                            { chanInfo | users = D.insert who.nick user chanInfo.users }
+                            { chanInfo | users = Dict.insert who.nick user chanInfo.users }
 
                         model_ =
                             setChannel serverChan chanInfo_ model
@@ -265,7 +291,7 @@ handleMessage serverName parsedMsg date model =
                                 serverInfo
 
                         model_ =
-                            { model | serverInfo = D.insert serverName server_ model.serverInfo }
+                            { model | serverInfo = Dict.insert serverName server_ model.serverInfo }
                     in
                         ( model_, Cmd.none )
 
