@@ -9,10 +9,12 @@ import Model exposing (..)
 import Task
 import WebSocket
 import Ports
+import Time exposing (Time)
 
 
 type Msg
     = AddServer ( ServerName, ServerInfo )
+    | AddLine ServerName ChannelName Line
     | SendLine ServerInfo ChannelInfo String
     | TypeLine String
     | SendRawLine ServerInfo String
@@ -23,6 +25,7 @@ type Msg
     | CloseChannel ServerName ChannelName
     | RefreshScroll
     | SendNotification String String
+    | Tick Time
     | Noop
 
 
@@ -40,26 +43,72 @@ update msg model =
             in
                 ( model_, Cmd.none )
 
+        AddLine serverName channelName line ->
+            case getServerChannel model ( serverName, channelName ) of
+                Just ( serverInfo, chanInfo ) ->
+                    let
+                        chanInfo_ =
+                            { chanInfo | buffer = appendLine chanInfo.buffer line }
+
+                        model_ =
+                            setChannel ( serverName, channelName ) chanInfo_ model
+
+                        cmdNotify =
+                            if String.contains serverInfo.nick line.message then
+                                SendNotification channelName line.message
+                            else
+                                Noop
+                    in
+                        update cmdNotify model_
+
+                Nothing ->
+                    update (CreateChannel serverName channelName) model
+                        |> andThen (AddLine serverName channelName line)
+
         SendLine serverInfo chanInfo line ->
             let
-                rawLine =
+                privmsg msg =
+                    let
+                        line =
+                            { ts = Date.fromTime model.currentTime
+                            , nick = serverInfo.nick
+                            , message = msg
+                            }
+
+                        _ =
+                            Debug.log "what is this" line
+
+                        nextMsg =
+                            AddLine serverInfo.name chanInfo.name line
+
+                        rawLine =
+                            String.join " " [ "PRIVMSG", chanInfo.name, ":" ++ msg ]
+                    in
+                        ( rawLine, nextMsg )
+
+                ( rawLine, nextMsg ) =
                     case String.split " " line of
                         "/join" :: rest ->
-                            String.join " " ("JOIN" :: rest)
+                            ( String.join " " ("JOIN" :: rest), Noop )
 
                         "/part" :: rest ->
-                            String.join " " ("PART" :: rest)
+                            ( String.join " " ("PART" :: rest), Noop )
 
                         "/privmsg" :: rest ->
-                            String.join " " ("PRIVMSG" :: rest)
+                            let
+                                msg =
+                                    String.join " " rest
+                            in
+                                privmsg msg
 
                         _ ->
-                            String.join " " [ "PRIVMSG", chanInfo.name, line ]
+                            privmsg line
 
                 model_ =
                     { model | inputLine = "" }
             in
                 update (SendRawLine serverInfo rawLine) model_
+                    |> andThen nextMsg
 
         TypeLine str ->
             let
@@ -111,6 +160,9 @@ update msg model =
 
         SendNotification title message ->
             ( model, Ports.send_notification ( title, message ) )
+
+        Tick time ->
+            ( { model | currentTime = time }, Cmd.none )
 
         _ ->
             -- TODO: handle these cases
@@ -168,20 +220,11 @@ handleMessage serverName parsedMsg date model =
                         newLine =
                             { ts = date, nick = from.nick, message = text }
 
-                        chanInfo_ =
-                            { chanInfo | buffer = appendLine chanInfo.buffer newLine }
-
-                        model_ =
-                            setChannel ( serverName, target ) chanInfo_ model
-
-                        cmdNotify =
-                            if String.contains serverInfo.nick text then
-                                SendNotification target text
-                            else
-                                Noop
+                        newMsg =
+                            AddLine serverName target newLine
                     in
-                        update RefreshScroll model_
-                            |> andThen cmdNotify
+                        update newMsg model
+                            |> andThen RefreshScroll
 
                 Irc.TopicIs { channel, text } ->
                     let

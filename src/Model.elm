@@ -3,6 +3,7 @@ module Model exposing (..)
 import Date exposing (Date)
 import Dict as D
 import Dict exposing (Dict)
+import Time exposing (Time)
 
 
 type alias ServerName =
@@ -21,6 +22,7 @@ type alias ServerInfo =
     { socket : String
     , nick : String
     , pass : Maybe String
+    , name : String
     }
 
 
@@ -65,6 +67,7 @@ type alias Model =
     , channelInfo : Dict ServerChannel ChannelInfo
     , current : Maybe ServerChannel
     , inputLine : String
+    , currentTime : Time
     }
 
 
@@ -74,6 +77,7 @@ initialModel =
     , channelInfo = Dict.fromList []
     , current = Nothing
     , inputLine = ""
+    , currentTime = 0
     }
 
 
@@ -108,6 +112,18 @@ setChannel sc chan model =
 getChannel : Model -> ServerChannel -> Maybe ChannelInfo
 getChannel model sc =
     D.get sc model.channelInfo
+
+
+getServerChannel : Model -> ServerChannel -> Maybe ( ServerInfo, ChannelInfo )
+getServerChannel model sc =
+    let
+        server =
+            getServer model sc
+
+        channel =
+            getChannel model sc
+    in
+        Maybe.map2 (\s c -> ( s, c )) server channel
 
 
 getOrCreateChannel : Model -> ServerChannel -> ChannelInfo

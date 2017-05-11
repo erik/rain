@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Dict
 import Html exposing (..)
+import Time
 import WebSocket
 import Model exposing (Model, initialModel)
 import Update exposing (update, Msg(..))
@@ -40,6 +41,7 @@ subscriptions model =
         Sub.batch
             ([ Ports.irc_messages ReceiveLine
              , Ports.saved_servers AddServer
+             , Time.every Time.second Tick
              ]
                 ++ recvWs
             )

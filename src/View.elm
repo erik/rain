@@ -95,7 +95,7 @@ onEnter msg =
 
 viewTopic : ChannelInfo -> Html Msg
 viewTopic channel =
-    div [ id "topic" ] [ text <| Maybe.withDefault "[unset]" channel.topic ]
+    div [ id "topic" ] [ text <| Maybe.withDefault "" channel.topic ]
 
 
 viewBuffer : ChannelInfo -> Html Msg
