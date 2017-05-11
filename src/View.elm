@@ -2,7 +2,6 @@ module View exposing (view)
 
 import Date.Format as Date
 import Dict
-import Dict.Extra exposing (groupBy, mapKeys)
 import Html exposing (..)
 import Html.Attributes exposing (id, href, class, title, target, value, classList)
 import Html.Events exposing (onInput, onSubmit, on, keyCode, onClick)
@@ -36,23 +35,14 @@ viewChannelList model =
         -- FIXME: lol, wtf
         list =
             model.channelInfo
-                |> Dict.toList
-                |> groupBy Tuple.first
-                |> Dict.toList
+                |> Dict.keys
+                |> List.sort
                 |> List.map
-                    (\( ( sName, cName ), chans ) ->
+                    (\( sName, cName ) ->
                         li []
-                            [ text sName
-                            , ul []
-                                (List.map
-                                    (\( _, chanInfo ) ->
-                                        li []
-                                            [ a [ onClick (SelectChannel sName cName) ]
-                                                [ text chanInfo.name ]
-                                            ]
-                                    )
-                                    chans
-                                )
+                            [ text <| sName ++ "/"
+                            , a [ onClick (SelectChannel sName cName) ]
+                                [ text cName ]
                             ]
                     )
     in
