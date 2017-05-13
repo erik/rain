@@ -9,6 +9,7 @@ import Form exposing (Form)
 import Irc
 import Model exposing (..)
 import Ports
+import Regex
 import Task
 import Time exposing (Time)
 import WebSocket
@@ -73,12 +74,15 @@ update msg model =
                         isChanMsg =
                             String.startsWith "#" channelName
 
+                        nickRegexp =
+                            Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
+
                         cmdNotify =
                             if
-                                String.contains serverInfo.nick line.message
+                                Regex.contains nickRegexp line.message
                                     || (serverInfo.nick /= line.nick && not isChanMsg)
                             then
-                                SendNotification channelName line.message
+                                SendNotification chanInfo.name line.message
                             else
                                 Noop
                     in
