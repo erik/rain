@@ -13,7 +13,7 @@ server:
 	python3 -m http.server
 
 proxy:
-	cd wsproxy; node index.js
+	cd wsproxy; yarn; node index.js
 
 # Spin up everything
 dev:
