@@ -1,9 +1,9 @@
 module Irc exposing (..)
 
-import Model
-import Regex exposing (HowMany(All))
 import Array exposing (..)
 import Date
+import Model
+import Regex exposing (HowMany(All))
 
 
 type alias ParsedMessage =

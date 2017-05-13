@@ -3,7 +3,7 @@ module View exposing (view)
 import Date.Format as Date
 import Dict
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder)
+import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus)
 import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
 import Html.Lazy exposing (lazy)
 import Json.Decode as Json
@@ -64,6 +64,7 @@ viewChannel model ( server, channel ) =
             , onInput TypeLine
             , onInputKey model server channel
             , value model.inputLine
+            , autofocus True
             ]
             []
         ]
