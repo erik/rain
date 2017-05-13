@@ -43,7 +43,7 @@ update msg model =
                     , nick = metadata.nick
                     , pass = metadata.pass
                     , name = metadata.name
-                    , networkChannel = newChannel serverBufferName
+                    , networkChannel = newChannel metadata.name
                     , channels = Dict.empty
                     }
 
