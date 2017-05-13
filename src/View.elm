@@ -67,15 +67,17 @@ viewChannel model ( server, channel ) =
             , hr [] []
             ]
         , lazy viewBuffer channel
-        , input
-            [ id "input-line"
-            , placeholder server.nick
-            , onInput TypeLine
-            , onInputKey model server channel
-            , value model.inputLine
-            , autofocus True
+        , div [ id "channel-footer" ]
+            [ input
+                [ id "input-line"
+                , placeholder server.nick
+                , onInput TypeLine
+                , onInputKey model server channel
+                , value model.inputLine
+                , autofocus True
+                ]
+                []
             ]
-            []
         ]
 
 
