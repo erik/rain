@@ -1,10 +1,10 @@
 port module Ports exposing (..)
 
-import Model exposing (..)
 import Irc exposing (..)
+import Model exposing (..)
 
 
-port saved_servers : (( ServerName, ServerInfo ) -> msg) -> Sub msg
+port saved_servers : (( ServerName, ServerMetaData ) -> msg) -> Sub msg
 
 
 port send_notification : ( String, String ) -> Cmd msg

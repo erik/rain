@@ -7,14 +7,14 @@ import Dict
 import Dom.Scroll
 import Irc
 import Model exposing (..)
-import Task
-import WebSocket
 import Ports
+import Task
 import Time exposing (Time)
+import WebSocket
 
 
 type Msg
-    = AddServer ( ServerName, ServerInfo )
+    = AddServer ( ServerName, ServerMetaData )
     | AddLine ServerName ChannelName Line
     | SendLine ServerInfo ChannelInfo String
     | TypeLine String
@@ -34,8 +34,20 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AddServer ( serverName, info ) ->
+        AddServer ( serverName, metadata ) ->
             let
+                -- FIXME: this kind of sucks. maybe there's an extensible
+                -- FIXME: record solution?
+                info =
+                    { socket = metadata.socket
+                    , nick = metadata.nick
+                    , pass = metadata.pass
+                    , name = metadata.name
+                    , networkChannel = newChannel serverBufferName
+                    , channels = Dict.empty
+                    }
+
+                -- TODO: add in the other things
                 serverInfo_ =
                     model.serverInfo
                         |> Dict.insert serverName info
@@ -252,7 +264,7 @@ andThen msg ( model, cmd ) =
 
 handleMessage : ServerName -> Irc.Message -> Date -> Model -> ( Model, Cmd Msg )
 handleMessage serverName parsedMsg date model =
-    case getServer model ( serverName, "" ) of
+    case getServer model serverName of
         Just serverInfo ->
             case parsedMsg of
                 Irc.Ping x ->

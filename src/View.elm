@@ -32,21 +32,30 @@ view model =
 viewChannelList : Model -> Html Msg
 viewChannelList model =
     let
-        -- FIXME: lol, wtf
-        list =
-            model.channelInfo
+        channelList serverName channels =
+            channels
                 |> Dict.keys
                 |> List.sort
                 |> List.map
-                    (\( sName, cName ) ->
+                    (\name ->
+                        li [ onClick (SelectChannel serverName name) ]
+                            [ text name ]
+                    )
+
+        serverList =
+            model.serverInfo
+                |> Dict.toList
+                -- |> List.sort (\( a, _ ) ( b, _ ) -> a < b)
+                |> List.map
+                    (\( serverName, serverInfo ) ->
                         li []
-                            [ text <| sName ++ "/"
-                            , a [ onClick (SelectChannel sName cName) ]
-                                [ text cName ]
+                            [ span [ onClick (SelectChannel serverName serverBufferName) ]
+                                [ text serverName ]
+                            , ul [] (channelList serverName serverInfo.channels)
                             ]
                     )
     in
-        aside [ id "channel-list" ] [ ul [] list ]
+        aside [ id "channel-list" ] [ ul [] serverList ]
 
 
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
