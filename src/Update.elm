@@ -5,6 +5,7 @@ import Date exposing (Date)
 import Debug
 import Dict
 import Dom.Scroll
+import Form exposing (Form)
 import Irc
 import Model exposing (..)
 import Ports
@@ -14,7 +15,7 @@ import WebSocket
 
 
 type Msg
-    = AddServer ( ServerName, ServerMetaData )
+    = AddServer ServerMetaData
     | AddLine ServerName ChannelName Line
     | SendLine ServerInfo ChannelInfo String
     | TypeLine String
@@ -28,20 +29,22 @@ type Msg
     | SendNotification String String
     | Tick Time
     | TabCompleteLine ServerInfo ChannelInfo
+    | ShowAddServerForm
+    | FormMsg Form.Msg
     | Noop
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AddServer ( serverName, metadata ) ->
+        AddServer metadata ->
             let
                 -- FIXME: this kind of sucks. maybe there's an extensible
                 -- FIXME: record solution?
                 info =
                     { socket = metadata.socket
                     , nick = metadata.nick
-                    , pass = metadata.pass
+                    , pass = Nothing -- metadata.pass
                     , name = metadata.name
                     , networkChannel = newChannel metadata.name
                     , channels = Dict.empty
@@ -50,7 +53,7 @@ update msg model =
                 -- TODO: add in the other things
                 serverInfo_ =
                     model.serverInfo
-                        |> Dict.insert serverName info
+                        |> Dict.insert metadata.name info
 
                 model_ =
                     { model | serverInfo = serverInfo_ }
@@ -177,7 +180,10 @@ update msg model =
                 Just _ ->
                     let
                         model_ =
-                            { model | current = Just ( serverName, channelName ) }
+                            { model
+                                | current = Just ( serverName, channelName )
+                                , newServerForm = Nothing
+                            }
                     in
                         update RefreshScroll model_
 
@@ -245,6 +251,36 @@ update msg model =
 
         Tick time ->
             ( { model | currentTime = time }, Cmd.none )
+
+        FormMsg formMsg ->
+            let
+                form_ =
+                    model.newServerForm
+
+                serverMeta =
+                    form_
+                        |> Maybe.andThen (Form.getOutput)
+            in
+                case ( formMsg, serverMeta ) of
+                    ( Form.Submit, Just serverMeta ) ->
+                        update (AddServer serverMeta) { model | newServerForm = Nothing }
+
+                    _ ->
+                        -- FIXME: gnarly.
+                        ( { model
+                            | newServerForm =
+                                form_
+                                    |> Maybe.map (Form.update newServerValidation formMsg)
+                          }
+                        , Cmd.none
+                        )
+
+        ShowAddServerForm ->
+            let
+                form =
+                    Form.initial [] newServerValidation
+            in
+                ( { model | newServerForm = Just form }, Cmd.none )
 
         _ ->
             -- TODO: handle these cases

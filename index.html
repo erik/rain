@@ -70,6 +70,14 @@
      overflow: auto;
  }
 
+ #new-server-form {
+     width: 100%;
+ }
+
+ #new-server-form input,label {
+     display: block;
+ }
+
  .timestamp {
      float: right;
      color: #a0a0a0;
@@ -139,7 +147,7 @@
  if (window.localStorage.savedServers) {
      let saved = JSON.parse(window.localStorage.savedServers)
      Object.keys(saved).forEach(k => {
-         app.ports.saved_servers.send([k, saved[k]])
+         app.ports.saved_servers.send(saved[k])
      })
  }
 </script>

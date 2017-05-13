@@ -3,6 +3,8 @@ module Model exposing (..)
 import Date exposing (Date)
 import Dict as D
 import Dict exposing (Dict)
+import Form exposing (Form)
+import Form.Validate as Validate exposing (..)
 import Time exposing (Time)
 
 
@@ -26,7 +28,8 @@ serverBufferName =
 type alias ServerMetaData =
     { socket : String
     , nick : String
-    , pass : Maybe String
+
+    -- , pass : String
     , name : String
     }
 
@@ -82,7 +85,17 @@ type alias Model =
     , current : Maybe ServerChannel
     , inputLine : String
     , currentTime : Time
+    , newServerForm : Maybe (Form () ServerMetaData)
     }
+
+
+newServerValidation : Validation () ServerMetaData
+newServerValidation =
+    map3 ServerMetaData
+        (field "socket" string)
+        (field "nick" string)
+        -- (field "pass" string)
+        (field "name" string)
 
 
 initialModel : Model
@@ -91,6 +104,7 @@ initialModel =
     , current = Nothing
     , inputLine = ""
     , currentTime = 0
+    , newServerForm = Nothing
     }
 
 

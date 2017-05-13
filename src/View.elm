@@ -2,6 +2,8 @@ module View exposing (view)
 
 import Date.Format as Date
 import Dict
+import Form exposing (Form)
+import Form.Input as Input
 import Html exposing (..)
 import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus)
 import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
@@ -16,16 +18,44 @@ view : Model -> Html Msg
 view model =
     let
         chatView =
-            case getActive model of
-                Just serverChan ->
+            case ( model.newServerForm, getActive model ) of
+                ( Just form, _ ) ->
+                    Html.map FormMsg (viewForm form)
+
+                ( Nothing, Just serverChan ) ->
                     viewChannel model serverChan
 
-                Nothing ->
+                _ ->
                     div [] [ text "nothing." ]
     in
         div []
             [ viewChannelList model
             , chatView
+            ]
+
+
+viewForm : Form () ServerMetaData -> Html Form.Msg
+viewForm form =
+    let
+        socket =
+            Form.getFieldAsString "socket" form
+
+        nick =
+            Form.getFieldAsString "nick" form
+
+        name =
+            Form.getFieldAsString "name" form
+    in
+        div [ id "new-server-form" ]
+            [ label [] [ text "Server websocket connection" ]
+            , Input.textInput socket []
+            , label [] [ text "nick" ]
+            , Input.textInput nick []
+            , label [] [ text "Server name" ]
+            , Input.textInput name []
+            , button
+                [ onClick Form.Submit ]
+                [ text "Submit" ]
             ]
 
 
@@ -45,7 +75,6 @@ viewChannelList model =
         serverList =
             model.serverInfo
                 |> Dict.toList
-                -- |> List.sort (\( a, _ ) ( b, _ ) -> a < b)
                 |> List.map
                     (\( serverName, serverInfo ) ->
                         li []
@@ -54,8 +83,11 @@ viewChannelList model =
                             , ul [] (channelList serverName serverInfo.channels)
                             ]
                     )
+
+        addServer =
+            li [ onClick ShowAddServerForm ] [ text "add server" ]
     in
-        aside [ id "channel-list" ] [ ul [] serverList ]
+        aside [ id "channel-list" ] [ ul [] (addServer :: serverList) ]
 
 
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
