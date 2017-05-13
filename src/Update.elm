@@ -83,9 +83,6 @@ update msg model =
                             , message = msg
                             }
 
-                        _ =
-                            Debug.log "what is this" line
-
                         nextMsg =
                             AddLine serverInfo.name chanInfo.name line
 
@@ -95,7 +92,7 @@ update msg model =
                         ( rawLine, nextMsg )
 
                 ( rawLine, nextMsg ) =
-                    case String.split " " line of
+                    case String.words line of
                         "/join" :: rest ->
                             ( String.join " " ("JOIN" :: rest), Noop )
 
@@ -130,6 +127,7 @@ update msg model =
             in
                 update (SendRawLine serverInfo rawLine) model_
                     |> andThen nextMsg
+                    |> andThen RefreshScroll
 
         TypeLine str ->
             let
@@ -185,27 +183,53 @@ update msg model =
         TabCompleteLine serverInfo channelInfo ->
             let
                 words =
-                    String.split " " model.inputLine
+                    String.words model.inputLine
 
                 lastWord =
                     case List.reverse words of
                         word :: _ ->
-                            word
+                            if word == "" then
+                                Nothing
+                            else
+                                Just word
 
                         _ ->
-                            ""
+                            Nothing
 
                 -- TODO: should also complete /privmsg etc
                 completions =
-                    channelInfo.users
-                        |> Dict.values
-                        |> List.filter (\u -> String.startsWith lastWord u.nick)
+                    lastWord
+                        |> Maybe.map
+                            (\w ->
+                                channelInfo.users
+                                    |> Dict.values
+                                    |> List.filter (\u -> String.startsWith w u.nick)
+                                    |> List.map (.nick)
+                            )
+
+                longestCompletion =
+                    completions
+                        |> Maybe.map List.sort
+                        |> Maybe.andThen List.head
             in
-                if lastWord == "" then
-                    ( model, Cmd.none )
-                else
-                    -- TODO: handle nick / command completion for real
-                    ( { model | inputLine = model.inputLine ++ "foobar" }, Cmd.none )
+                case longestCompletion of
+                    Just c ->
+                        let
+                            words_ =
+                                List.drop 1 words
+                                    |> String.join " "
+
+                            completion =
+                                c ++ ": "
+
+                            newInput =
+                                String.join " " [ words_, completion ]
+                        in
+                            -- TODO: handle nick / command completion for real
+                            ( { model | inputLine = String.trimLeft newInput }, Cmd.none )
+
+                    Nothing ->
+                        ( model, Cmd.none )
 
         Tick time ->
             ( { model | currentTime = time }, Cmd.none )
@@ -274,9 +298,6 @@ handleMessage serverName parsedMsg date model =
                         chanInfo =
                             getOrCreateChannel model ( serverName, channel )
 
-                        _ =
-                            Debug.log <| channel ++ "topic is" ++ text
-
                         chanInfo_ =
                             { chanInfo | topic = Just text }
                     in
@@ -292,6 +313,25 @@ handleMessage serverName parsedMsg date model =
 
                         model_ =
                             { model | serverInfo = Dict.insert serverName server_ model.serverInfo }
+                    in
+                        ( model_, Cmd.none )
+
+                Irc.NickList { channel, users } ->
+                    let
+                        chanInfo =
+                            getOrCreateChannel model ( serverName, channel )
+
+                        userDict =
+                            users
+                                |> List.map (\u -> ( u.nick, u ))
+                                |> Dict.fromList
+                                |> Dict.union chanInfo.users
+
+                        chanInfo_ =
+                            { chanInfo | users = userDict }
+
+                        model_ =
+                            setChannel ( serverName, channel ) chanInfo_ model
                     in
                         ( model_, Cmd.none )
 

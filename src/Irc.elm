@@ -1,5 +1,7 @@
 module Irc exposing (..)
 
+import Model
+import Regex exposing (HowMany(All))
 import Array exposing (..)
 import Date
 
@@ -50,6 +52,7 @@ type Message
         , text : Maybe String
         }
     | TopicIs { text : String, channel : String }
+    | NickList { channel : String, users : List Model.UserInfo }
     | Nick
         { who : User
         , nick : String
@@ -177,6 +180,36 @@ parse msg =
                         TopicIs
                             { text = Maybe.withDefault "what" topic
                             , channel = Maybe.withDefault "what" target
+                            }
+
+                "353" ->
+                    let
+                        specialChars =
+                            Regex.regex "[%@~\\+]+"
+
+                        mkUserInfo nickStr =
+                            nickStr
+                                |> Regex.replace All specialChars (\_ -> "")
+                                |> (\nick ->
+                                        { nick = nick
+                                        , user = ""
+                                        , host = ""
+                                        , name = ""
+                                        }
+                                   )
+
+                        users =
+                            get 3 msg.params
+                                |> Maybe.withDefault ""
+                                |> String.words
+                                |> List.map mkUserInfo
+
+                        channel =
+                            get 2 msg.params
+                    in
+                        NickList
+                            { channel = Maybe.withDefault "wtf" channel
+                            , users = users
                             }
 
                 _ ->
