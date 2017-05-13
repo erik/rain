@@ -1,3 +1,3 @@
 # elm irc chat
 
-    make dev -> http://localhost:8000    
+    make all dev -> http://localhost:8000    
