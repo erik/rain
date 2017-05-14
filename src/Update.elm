@@ -77,12 +77,15 @@ update msg model =
                         nickRegexp =
                             Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
 
+                        body =
+                            String.join "" [ "<", line.nick, ">: ", line.message ]
+
                         cmdNotify =
                             if
                                 Regex.contains nickRegexp line.message
                                     || (serverInfo.nick /= line.nick && not isChanMsg)
                             then
-                                SendNotification chanInfo.name line.message
+                                SendNotification chanInfo.name body
                             else
                                 Noop
                     in
