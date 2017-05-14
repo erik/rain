@@ -7,7 +7,7 @@ import Form.Input as Input
 import Html exposing (..)
 import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus)
 import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
-import Html.Lazy exposing (lazy)
+import Html.Lazy exposing (lazy2)
 import Json.Decode as Json
 import Model exposing (..)
 import Regex exposing (HowMany(All), regex)
@@ -101,7 +101,7 @@ viewChannel model ( server, channel ) =
             , viewTopic channel
             , hr [] []
             ]
-        , lazy viewBuffer channel
+        , lazy2 viewBuffer server channel
         , div [ id "channel-footer" ]
             [ input
                 [ id "input-line"
@@ -155,19 +155,19 @@ viewTopic channel =
     div [ id "topic" ] [ text <| Maybe.withDefault "" channel.topic ]
 
 
-viewBuffer : ChannelInfo -> Html Msg
-viewBuffer channel =
+viewBuffer : ServerInfo -> ChannelInfo -> Html Msg
+viewBuffer serverInfo channel =
     let
         lines =
             channel.buffer
                 |> List.reverse
-                |> List.map viewLineGroup
+                |> List.map (viewLineGroup serverInfo)
     in
         div [ id "buffer-view" ] lines
 
 
-viewLineGroup : LineGroup -> Html Msg
-viewLineGroup group =
+viewLineGroup : ServerInfo -> LineGroup -> Html Msg
+viewLineGroup serverInfo group =
     let
         timeStr =
             Date.format "%H:%M:%S" group.ts
@@ -179,8 +179,10 @@ viewLineGroup group =
                 , div
                     [ classList
                         [ ( "message-nick", True )
-                        , ( "message-nick-self", False )
+                        , ( "message-nick-self", group.nick == serverInfo.nick )
+                        , ( "clickable", True )
                         ]
+                    , onClick (SelectChannel serverInfo.name group.nick)
                     ]
                     [ text group.nick ]
                 ]

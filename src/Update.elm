@@ -186,21 +186,21 @@ update msg model =
                 ( model_, Cmd.none )
 
         SelectChannel serverName channelName ->
-            case getChannel model ( serverName, channelName ) of
-                Just _ ->
-                    let
-                        model_ =
-                            { model
-                                | current = Just ( serverName, channelName )
-                                , newServerForm = Nothing
-                            }
-                    in
-                        update RefreshScroll model_
+            let
+                -- FIXME: ugly naming
+                channel =
+                    getOrCreateChannel model ( serverName, channelName )
 
-                _ ->
-                    -- TODO: handle this?
-                    Debug.log "tried to select a bad channel?"
-                        ( model, Cmd.none )
+                model_ =
+                    setChannel ( serverName, channelName ) channel model
+
+                model__ =
+                    { model_
+                        | current = Just ( serverName, channelName )
+                        , newServerForm = Nothing
+                    }
+            in
+                update RefreshScroll model__
 
         RefreshScroll ->
             ( model, Task.attempt (\_ -> Noop) (Dom.Scroll.toBottom "body") )
