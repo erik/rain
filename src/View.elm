@@ -37,26 +37,37 @@ view model =
 viewForm : Form () ServerMetaData -> Html Form.Msg
 viewForm form =
     let
-        socket =
-            Form.getFieldAsString "socket" form
+        inputs =
+            [ ( "WebSocket Proxy:", "proxyHost" )
+            , ( "Proxy password:", "proxyPass" )
+            , ( "Server Name:", "name" )
+            , ( "IRC Server host:", "server" )
+            , ( "IRC Server port:", "port_" )
+            , ( "IRC server password", "pass" )
+            , ( "Nick", "nick" )
+            ]
 
-        nick =
-            Form.getFieldAsString "nick" form
-
-        name =
-            Form.getFieldAsString "name" form
+        inputsHtml =
+            inputs
+                |> List.map
+                    (\( label, fieldName ) ->
+                        ( label, Form.getFieldAsString fieldName form )
+                    )
+                |> List.map
+                    (\( lbl, field ) ->
+                        div [ class "form-row" ]
+                            [ label [] [ text lbl ]
+                            , Input.textInput field []
+                            ]
+                    )
     in
         div [ id "new-server-form" ]
-            [ label [] [ text "Server websocket connection" ]
-            , Input.textInput socket []
-            , label [] [ text "nick" ]
-            , Input.textInput nick []
-            , label [] [ text "Server name" ]
-            , Input.textInput name []
-            , button
-                [ onClick Form.Submit ]
-                [ text "Submit" ]
-            ]
+            (inputsHtml
+                ++ [ button
+                        [ onClick Form.Submit ]
+                        [ text "Submit" ]
+                   ]
+            )
 
 
 viewChannelList : Model -> Html Msg

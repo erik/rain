@@ -38,23 +38,36 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AddServer metadata ->
+        AddServer meta ->
             let
                 -- FIXME: this kind of sucks. maybe there's an extensible
                 -- FIXME: record solution?
+                queryString =
+                    [ ( "host", meta.server )
+                    , ( "port", meta.port_ )
+                    , ( "nick", meta.nick )
+                    , ( "pass", meta.pass )
+                    ]
+                        |> List.map (\( k, v ) -> k ++ "=" ++ v)
+                        |> String.join "&"
+
+                -- TODO: proxyPass should be used.
+                socketUrl =
+                    String.join "" [ "ws://", meta.proxyHost, "?", queryString ]
+
                 info =
-                    { socket = metadata.socket
-                    , nick = metadata.nick
+                    { socket = socketUrl
+                    , nick = meta.nick
                     , pass = Nothing -- metadata.pass
-                    , name = metadata.name
-                    , networkChannel = newChannel metadata.name
+                    , name = meta.name
+                    , networkChannel = newChannel meta.name
                     , channels = Dict.empty
                     }
 
                 -- TODO: add in the other things
                 serverInfo_ =
                     model.serverInfo
-                        |> Dict.insert metadata.name info
+                        |> Dict.insert meta.name info
 
                 model_ =
                     { model | serverInfo = serverInfo_ }

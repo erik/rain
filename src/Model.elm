@@ -26,10 +26,12 @@ serverBufferName =
 
 
 type alias ServerMetaData =
-    { socket : String
+    { proxyHost : String
+    , proxyPass : String
+    , server : String
+    , port_ : String -- TODO: make this an int
     , nick : String
-
-    -- , pass : String
+    , pass : String
     , name : String
     }
 
@@ -91,10 +93,13 @@ type alias Model =
 
 newServerValidation : Validation () ServerMetaData
 newServerValidation =
-    map3 ServerMetaData
-        (field "socket" string)
+    map7 ServerMetaData
+        (field "proxyHost" string)
+        (field "proxyPass" string)
+        (field "port_" string)
+        (field "server" string)
         (field "nick" string)
-        -- (field "pass" string)
+        (field "pass" string)
         (field "name" string)
 
 
