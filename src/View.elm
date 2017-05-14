@@ -68,7 +68,10 @@ viewChannelList model =
                 |> List.sort
                 |> List.map
                     (\name ->
-                        li [ onClick (SelectChannel serverName name) ]
+                        li
+                            [ onClick (SelectChannel serverName name)
+                            , class "clickable"
+                            ]
                             [ text name ]
                     )
 
@@ -77,7 +80,7 @@ viewChannelList model =
                 |> Dict.toList
                 |> List.map
                     (\( serverName, serverInfo ) ->
-                        li []
+                        li [ class "clickable" ]
                             [ span [ onClick (SelectChannel serverName serverBufferName) ]
                                 [ text serverName ]
                             , ul [] (channelList serverName serverInfo.channels)
@@ -85,7 +88,7 @@ viewChannelList model =
                     )
 
         addServer =
-            li [ onClick ShowAddServerForm ] [ text "add server" ]
+            li [ class "clickable", onClick ShowAddServerForm ] [ text "add server" ]
     in
         aside [ id "channel-list" ] [ ul [] (addServer :: serverList) ]
 
