@@ -144,9 +144,12 @@ update msg model =
                 model_ =
                     { model | inputLine = "" }
             in
-                update (SendRawLine serverInfo rawLine) model_
-                    |> andThen nextMsg
-                    |> andThen RefreshScroll
+                if model.inputLine == "" then
+                    ( model, Cmd.none )
+                else
+                    update (SendRawLine serverInfo rawLine) model_
+                        |> andThen nextMsg
+                        |> andThen RefreshScroll
 
         TypeLine str ->
             let
