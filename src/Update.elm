@@ -84,20 +84,21 @@ update msg model =
                         model_ =
                             setChannel ( serverName, channelName ) chanInfo_ model
 
-                        isChanMsg =
-                            String.startsWith "#" channelName
-
                         nickRegexp =
                             Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
+
+                        matchesNick =
+                            Regex.contains nickRegexp line.message
+
+                        isDirectMessage =
+                            (serverInfo.nick /= line.nick)
+                                && (not (String.startsWith "#" channelName))
 
                         body =
                             String.join "" [ "<", line.nick, ">: ", line.message ]
 
                         cmdNotify =
-                            if
-                                Regex.contains nickRegexp line.message
-                                    || (serverInfo.nick /= line.nick && not isChanMsg)
-                            then
+                            if matchesNick || (isDirectMessage && channelName /= serverBufferName) then
                                 SendNotification chanInfo.name body
                             else
                                 Noop
