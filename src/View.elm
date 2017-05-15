@@ -38,36 +38,38 @@ viewForm : Form () ServerMetaData -> Html Form.Msg
 viewForm form =
     let
         inputs =
-            [ ( "WebSocket Proxy:", "proxyHost" )
-            , ( "Proxy password:", "proxyPass" )
-            , ( "Server Name:", "name" )
-            , ( "IRC Server host:", "server" )
-            , ( "IRC Server port:", "port_" )
-            , ( "IRC server password", "pass" )
-            , ( "Nick", "nick" )
+            [ ( Input.textInput, "WebSocket proxy:", "proxyHost", "wss://rain-proxy.example.com/" )
+            , ( Input.passwordInput, "WebSocket proxy password:", "proxyPass", "" )
+            , ( Input.textInput, "IRC server name:", "name", "freenode" )
+            , ( Input.textInput, "IRC server host:", "server", "irc.freenote.net" )
+            , ( Input.textInput, "IRC server port:", "port_", "6697" )
+            , ( Input.passwordInput, "IRC server password", "pass", "" )
+            , ( Input.textInput, "Nick", "nick", "rain`" )
             ]
 
         inputsHtml =
             inputs
                 |> List.map
-                    (\( label, fieldName ) ->
-                        ( label, Form.getFieldAsString fieldName form )
+                    (\( input, label, fieldName, example ) ->
+                        ( input, label, Form.getFieldAsString fieldName form, example )
                     )
                 |> List.map
-                    (\( lbl, field ) ->
+                    (\( input, lbl, field, ex ) ->
                         div [ class "form-row" ]
                             [ label [] [ text lbl ]
-                            , Input.textInput field []
+                            , input field [ placeholder ex ]
                             ]
                     )
     in
         div [ id "new-server-form" ]
-            (inputsHtml
-                ++ [ button
-                        [ onClick Form.Submit ]
-                        [ text "Submit" ]
-                   ]
-            )
+            [ h1 [] [ text "Add IRC Connection" ]
+            , div [] inputsHtml
+            , div [ class "form-row" ]
+                [ button
+                    [ onClick Form.Submit ]
+                    [ text "Add server" ]
+                ]
+            ]
 
 
 viewChannelList : Model -> Html Msg
