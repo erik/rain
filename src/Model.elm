@@ -96,8 +96,8 @@ newServerValidation =
     map7 ServerMetaData
         (field "proxyHost" string)
         (field "proxyPass" string)
-        (field "port_" string)
         (field "server" string)
+        (field "port_" string)
         (field "nick" string)
         (field "pass" string)
         (field "name" string)
