@@ -150,11 +150,8 @@ setChannel ( serverName, channelName ) chan model =
                         D.insert channelName chan serverInfo.channels
                 in
                     { serverInfo | channels = channels }
-
-        model_ =
-            { model | serverInfo = D.insert serverName serverInfo_ model.serverInfo }
     in
-        model_
+        { model | serverInfo = D.insert serverName serverInfo_ model.serverInfo }
 
 
 getChannel : Model -> ServerChannel -> Maybe ChannelInfo

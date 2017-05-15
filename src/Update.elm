@@ -350,8 +350,14 @@ handleMessage serverName parsedMsg date model =
 
                         model_ =
                             setChannel serverChan chanInfo_ model
+
+                        current_ =
+                            if serverInfo.nick == who.nick then
+                                Just serverChan
+                            else
+                                model.current
                     in
-                        ( { model_ | current = Just serverChan }, Cmd.none )
+                        ( { model_ | current = current_ }, Cmd.none )
 
                 Irc.Privmsg { from, target, text } ->
                     let
