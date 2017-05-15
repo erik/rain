@@ -193,11 +193,14 @@ viewLineGroup serverInfo group =
                     [ classList
                         [ ( "message-nick", True )
                         , ( "message-nick-self", group.nick == serverInfo.nick )
-                        , ( "clickable", True )
                         ]
-                    , onClick (SelectChannel serverInfo.name group.nick)
                     ]
-                    [ text group.nick ]
+                    [ span
+                        [ class "clickable"
+                        , onClick (SelectChannel serverInfo.name group.nick)
+                        ]
+                        [ text group.nick ]
+                    ]
                 ]
 
         messages =
