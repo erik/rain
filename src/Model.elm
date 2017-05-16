@@ -79,6 +79,7 @@ type alias ChannelInfo =
     , users : Dict String UserInfo
     , topic : Maybe String
     , buffer : Buffer
+    , lastChecked : Time.Time
     }
 
 
@@ -124,6 +125,7 @@ newChannel name =
     , users = Dict.empty
     , topic = Nothing
     , buffer = []
+    , lastChecked = 0
     }
 
 

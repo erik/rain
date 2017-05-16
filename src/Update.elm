@@ -205,8 +205,11 @@ update msg model =
                 channel =
                     getOrCreateChannel model ( serverName, channelName )
 
+                channel_ =
+                    { channel | lastChecked = model.currentTime }
+
                 model_ =
-                    setChannel ( serverName, channelName ) channel model
+                    setChannel ( serverName, channelName ) channel_ model
 
                 model__ =
                     { model_
@@ -274,7 +277,18 @@ update msg model =
                         ( model, Cmd.none )
 
         Tick time ->
-            ( { model | currentTime = time }, Cmd.none )
+            let
+                model_ =
+                    case getActive model of
+                        Just ( serverInfo, chanInfo ) ->
+                            setChannel ( serverInfo.name, chanInfo.name )
+                                { chanInfo | lastChecked = time }
+                                model
+
+                        Nothing ->
+                            model
+            in
+                ( { model_ | currentTime = time }, Cmd.none )
 
         FormMsg formMsg ->
             let

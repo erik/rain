@@ -1,5 +1,6 @@
 module View exposing (view)
 
+import Date
 import Date.Format as Date
 import Dict
 import Form exposing (Form)
@@ -72,20 +73,44 @@ viewForm form =
             ]
 
 
+hasUnread : ChannelInfo -> Bool
+hasUnread chan =
+    let
+        lastMsg =
+            chan.buffer
+                |> List.head
+                |> Maybe.map .messages
+                |> Maybe.map List.reverse
+                |> Maybe.andThen List.head
+
+        lastMsgTs =
+            case lastMsg of
+                Just msg ->
+                    Date.toTime msg.ts
+
+                Nothing ->
+                    chan.lastChecked
+    in
+        chan.lastChecked < lastMsgTs
+
+
 viewChannelList : Model -> Html Msg
 viewChannelList model =
     let
         channelList serverName channels =
             channels
-                |> Dict.keys
-                |> List.sort
+                |> Dict.values
+                |> List.sortBy .name
                 |> List.map
-                    (\name ->
+                    (\chanInfo ->
                         li
-                            [ onClick (SelectChannel serverName name)
-                            , class "clickable"
+                            [ onClick (SelectChannel serverName chanInfo.name)
+                            , classList
+                                [ ( "clickable", True )
+                                , ( "unread", hasUnread chanInfo )
+                                ]
                             ]
-                            [ text name ]
+                            [ text chanInfo.name ]
                     )
 
         serverList =
