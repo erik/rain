@@ -130,11 +130,14 @@ update msg model =
 
                 ( rawLine, nextMsg ) =
                     case String.words line of
-                        "/join" :: rest ->
-                            ( String.join " " ("JOIN" :: rest), Noop )
+                        [ "/join", channel ] ->
+                            ( String.join " " [ "JOIN", channel ], Noop )
 
-                        "/part" :: rest ->
-                            ( String.join " " ("PART" :: rest), Noop )
+                        [ "/part" ] ->
+                            ( "PART " ++ chanInfo.name, Noop )
+
+                        [ "/part", channel ] ->
+                            ( String.join " " [ "PART", channel ], Noop )
 
                         "/me" :: rest ->
                             let
