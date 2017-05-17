@@ -10,6 +10,7 @@ import Irc
 import Model exposing (..)
 import Ports
 import Regex
+import Set
 import Task
 import Time exposing (Time)
 import WebSocket
@@ -336,6 +337,11 @@ andThen msg ( model, cmd ) =
         newModel ! [ cmd, newCmd ]
 
 
+ignoredCommands : Set.Set String
+ignoredCommands =
+    Set.fromList [ "333", "366" ]
+
+
 handleMessage : ServerName -> Irc.Message -> Date -> Model -> ( Model, Cmd Msg )
 handleMessage serverName parsedMsg date model =
     case getServer model serverName of
@@ -447,8 +453,11 @@ handleMessage serverName parsedMsg date model =
                         _ =
                             Debug.log "unknown msg" msg
                     in
-                        update newMsg model
-                            |> andThen RefreshScroll
+                        if Set.member msg.command ignoredCommands then
+                            ( model, Cmd.none )
+                        else
+                            update newMsg model
+                                |> andThen RefreshScroll
 
                 msg ->
                     let
