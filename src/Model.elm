@@ -221,4 +221,4 @@ appendLine groups line =
                 { hd | messages = hd.messages ++ [ line ] } :: rest
             else
                 [ { ts = line.ts, nick = line.nick, messages = [ line ] }, hd ]
-                    ++ rest
+                    ++ (List.take 1000 rest)
