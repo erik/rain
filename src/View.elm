@@ -8,7 +8,7 @@ import Form.Input as Input
 import Html exposing (..)
 import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus)
 import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
-import Html.Lazy exposing (lazy2)
+import Html.Lazy exposing (lazy, lazy2)
 import Json.Decode as Json
 import Model exposing (..)
 import Regex exposing (HowMany(All), regex)
@@ -30,7 +30,7 @@ view model =
                     div [] [ text "nothing." ]
     in
         div []
-            [ viewChannelList model
+            [ lazy viewChannelList model
             , chatView
             ]
 
