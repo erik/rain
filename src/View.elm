@@ -241,7 +241,7 @@ formatLine : Line -> Html Msg
 formatLine line =
     let
         timeStr =
-            Date.format "%H:%M:%S" line.ts
+            Date.format "%Y-%m-%d %H:%M:%S" line.ts
 
         ( message, isAction ) =
             case String.split ("\x01" ++ "ACTION") line.message of
