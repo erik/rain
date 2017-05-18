@@ -56,12 +56,16 @@ update msg model =
                 socketUrl =
                     String.join "" [ "ws://", meta.proxyHost, "?", queryString ]
 
+                networkChannel =
+                    newChannel meta.name
+                        |> \x -> { x | isServer = True }
+
                 info =
                     { socket = socketUrl
                     , nick = meta.nick
                     , pass = Nothing -- metadata.pass
                     , name = meta.name
-                    , networkChannel = newChannel meta.name
+                    , networkChannel = networkChannel
                     , channels = Dict.empty
                     }
 

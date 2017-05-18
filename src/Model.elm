@@ -12,6 +12,10 @@ type alias ServerName =
     String
 
 
+
+--{- TODO: rename to buffer-}
+
+
 type alias ChannelName =
     String
 
@@ -22,7 +26,7 @@ type alias ServerChannel =
 
 serverBufferName : ChannelName
 serverBufferName =
-    ":server:"
+    "::server::"
 
 
 type alias ServerMetaData =
@@ -80,6 +84,7 @@ type alias ChannelInfo =
     , topic : Maybe String
     , buffer : Buffer
     , lastChecked : Time.Time
+    , isServer : Bool
     }
 
 
@@ -126,11 +131,13 @@ newChannel name =
     , topic = Nothing
     , buffer = []
     , lastChecked = 0
+    , isServer = False
     }
 
 
 setChannel : ServerChannel -> ChannelInfo -> Model -> Model
 setChannel ( serverName, channelName ) chan model =
+    -- FIXME: we should pass in a ServerInfo value here.
     let
         serverInfo =
             getServer model serverName
@@ -144,7 +151,7 @@ setChannel ( serverName, channelName ) chan model =
                     }
 
         serverInfo_ =
-            if channelName == serverBufferName then
+            if chan.isServer then
                 { serverInfo | networkChannel = chan }
             else
                 let
