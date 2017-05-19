@@ -5,6 +5,7 @@ const url = require('url');
 
 const WebSocket = require('ws');
 
+const PROXY_PASS = process.env.PROXY_PASS || '';
 
 const SUPPORTED_CAPS = [
     'znc.in/server-time-iso',
@@ -15,14 +16,16 @@ const wss = new WebSocket.Server({ port: 6676 });
 
 
 wss.on('connection', function connection(ws) {
-    console.log('connection', ws);
-
     let query = url.parse(ws.upgradeReq.url, true).query;
     const required = ['host', 'port', 'nick'];
 
     for (let i in required) {
         if (!query[required[i]])
             return ws.send(`missing required param ${required[i]}`);
+    }
+
+    if (PROXY_PASS && query.proxyPass != PROXY_PASS) {
+        return ws.send(`Bad password`);
     }
 
     const socket = tls.connect({

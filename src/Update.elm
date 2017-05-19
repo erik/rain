@@ -46,13 +46,13 @@ update msg model =
                 queryString =
                     [ ( "host", meta.server )
                     , ( "port", meta.port_ )
+                    , ( "proxyPass", meta.proxyPass )
                     , ( "nick", meta.nick )
                     , ( "pass", meta.pass )
                     ]
                         |> List.map (\( k, v ) -> k ++ "=" ++ v)
                         |> String.join "&"
 
-                -- TODO: proxyPass should be used.
                 socketUrl =
                     String.join "" [ "ws://", meta.proxyHost, "?", queryString ]
 
@@ -63,7 +63,7 @@ update msg model =
                 info =
                     { socket = socketUrl
                     , nick = meta.nick
-                    , pass = Nothing -- metadata.pass
+                    , pass = Just meta.pass
                     , name = meta.name
                     , networkChannel = networkChannel
                     , channels = Dict.empty
