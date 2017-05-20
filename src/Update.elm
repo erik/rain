@@ -45,8 +45,6 @@ update msg model =
                     [ ( "host", meta.server )
                     , ( "port", meta.port_ )
                     , ( "proxyPass", meta.proxyPass )
-                    , ( "nick", meta.nick )
-                    , ( "pass", meta.pass )
                     ]
                         |> List.map (\( k, v ) -> k ++ "=" ++ v)
                         |> String.join "&"
@@ -72,10 +70,27 @@ update msg model =
                     model.serverInfo
                         |> Dict.insert meta.name info
 
+                lines =
+                    [ "NICK " ++ meta.nick
+                    , "USER " ++ meta.nick ++ " * * :" ++ meta.nick
+                    , "CAP REQ znc.in/server-time-iso"
+                    , "CAP REQ server-time"
+                    , "CAP END"
+                    ]
+
+                connectionMessages =
+                    List.map (SendRawLine info) lines
+
+                passMsg =
+                    if meta.pass == "" then
+                        Noop
+                    else
+                        SendRawLine info <| "PASS " ++ meta.pass
+
                 model_ =
                     { model | serverInfo = serverInfo_ }
             in
-                ( model_, Cmd.none )
+                List.foldl (andThen) (update passMsg model_) connectionMessages
 
         AddLine serverName channelName line ->
             case getServerChannel model ( serverName, channelName ) of
@@ -182,7 +197,11 @@ update msg model =
                 ( model_, Cmd.none )
 
         SendRawLine serverInfo line ->
-            ( model, WebSocket.send serverInfo.socket line )
+            let
+                _ =
+                    Debug.log "sending" line
+            in
+                ( model, WebSocket.send serverInfo.socket (line ++ "\n") )
 
         ReceiveRawLine serverName line ->
             ( model, Ports.parse_raw ( serverName, line ) )
