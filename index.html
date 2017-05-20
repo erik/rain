@@ -153,6 +153,21 @@
      app.ports.irc_messages.send([server, p])
  })
 
+ app.ports.refresh_scroll_position.subscribe(force => {
+     const PADDING = 200
+     let scrollPos = document.body.scrollTop + window.innerHeight
+
+     // Bail if we're not at the bottom of the page (don't interrupt scrolling)
+     if (!force && scrollPos < document.body.scrollHeight - PADDING) {
+         return
+     }
+
+     // Uhm...
+     setTimeout(() => {
+         document.body.scrollTop = document.body.scrollHeight
+     }, 50)
+ })
+
  app.ports.send_notification.subscribe(args => {
      let [title, message] = args
 

@@ -4,14 +4,12 @@ import Array
 import Date exposing (Date)
 import Debug
 import Dict
-import Dom.Scroll
 import Form exposing (Form)
 import Irc
 import Model exposing (..)
 import Ports
 import Regex
 import Set
-import Task
 import Time exposing (Time)
 import WebSocket
 
@@ -27,7 +25,7 @@ type Msg
     | CreateChannel ServerName ChannelName
     | SelectChannel ServerName ChannelName
     | CloseChannel ServerName ChannelName
-    | RefreshScroll
+    | RefreshScroll Bool
     | SendNotification String String
     | Tick Time
     | TabCompleteLine ServerInfo ChannelInfo
@@ -174,7 +172,7 @@ update msg model =
                 else
                     update (SendRawLine serverInfo rawLine) model_
                         |> andThen nextMsg
-                        |> andThen RefreshScroll
+                        |> andThen (RefreshScroll True)
 
         TypeLine str ->
             let
@@ -225,10 +223,10 @@ update msg model =
                         , newServerForm = Nothing
                     }
             in
-                update RefreshScroll model__
+                update (RefreshScroll True) model__
 
-        RefreshScroll ->
-            ( model, Task.attempt (\_ -> Noop) (Dom.Scroll.toBottom "body") )
+        RefreshScroll force ->
+            ( model, Ports.refresh_scroll_position force )
 
         SendNotification title message ->
             ( model, Ports.send_notification ( title, message ) )
@@ -394,9 +392,15 @@ handleMessage serverName parsedMsg date model =
 
                         newMsg =
                             AddLine serverName target newLine
+
+                        refreshMsg =
+                            if Just ( serverInfo.name, target ) == model.current then
+                                RefreshScroll False
+                            else
+                                Noop
                     in
                         update newMsg model
-                            |> andThen RefreshScroll
+                            |> andThen refreshMsg
 
                 Irc.TopicIs { channel, text } ->
                     let
@@ -464,7 +468,7 @@ handleMessage serverName parsedMsg date model =
                             ( model, Cmd.none )
                         else
                             update newMsg model
-                                |> andThen RefreshScroll
+                                |> andThen (RefreshScroll False)
 
                 msg ->
                     let
