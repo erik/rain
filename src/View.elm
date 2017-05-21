@@ -229,7 +229,7 @@ viewLineGroup serverInfo group =
                 ]
 
         messages =
-            List.map formatLine group.messages
+            List.map (formatLine serverInfo) group.messages
     in
         div [ class "group" ]
             [ groupHead
@@ -237,8 +237,8 @@ viewLineGroup serverInfo group =
             ]
 
 
-formatLine : Line -> Html Msg
-formatLine line =
+formatLine : ServerInfo -> Line -> Html Msg
+formatLine serverInfo line =
     let
         timeStr =
             Date.format "%Y-%m-%d %H:%M:%S" line.ts
@@ -260,6 +260,10 @@ formatLine line =
         split =
             Regex.split All (regex "(\\s+)") message
 
+        matchesNick =
+            line.message
+                |> Regex.contains (regex ("\\b" ++ serverInfo.nick ++ "\\b"))
+
         linkify word =
             if String.contains "://" word then
                 a [ href word, target "_blank" ] [ text word ]
@@ -269,7 +273,7 @@ formatLine line =
         div
             [ title timeStr
             , classList
-                [ ( "highlight", String.contains "erik" message ) -- TODO: remove hardcoded nick
+                [ ( "highlight", matchesNick )
                 , ( "action", isAction )
                 ]
             ]
