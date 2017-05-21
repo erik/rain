@@ -39,12 +39,13 @@ update msg model =
     case msg of
         AddServer meta ->
             let
-                -- FIXME: this kind of sucks. maybe there's an extensible
-                -- FIXME: record solution?
+                -- We send meta.name to differentiate the query
+                -- strings so elm opens up multiple websockets
                 queryString =
                     [ ( "host", meta.server )
                     , ( "port", meta.port_ )
                     , ( "proxyPass", meta.proxyPass )
+                    , ( "name", meta.name )
                     ]
                         |> List.map (\( k, v ) -> k ++ "=" ++ v)
                         |> String.join "&"
@@ -70,27 +71,28 @@ update msg model =
                     model.serverInfo
                         |> Dict.insert meta.name info
 
+                passMsg =
+                    if meta.pass == "" then
+                        ""
+                    else
+                        "PASS " ++ meta.pass
+
                 lines =
-                    [ "NICK " ++ meta.nick
-                    , "USER " ++ meta.nick ++ " * * :" ++ meta.nick
+                    [ passMsg
                     , "CAP REQ znc.in/server-time-iso"
                     , "CAP REQ server-time"
                     , "CAP END"
+                    , "NICK " ++ meta.nick
+                    , "USER " ++ meta.nick ++ " * * :" ++ meta.nick
                     ]
 
                 connectionMessages =
                     List.map (SendRawLine info) lines
 
-                passMsg =
-                    if meta.pass == "" then
-                        Noop
-                    else
-                        SendRawLine info <| "PASS " ++ meta.pass
-
                 model_ =
                     { model | serverInfo = serverInfo_ }
             in
-                List.foldl (andThen) (update passMsg model_) connectionMessages
+                List.foldr (andThen) ( model_, Cmd.none ) connectionMessages
 
         AddLine serverName channelName line ->
             case getServerChannel model ( serverName, channelName ) of
