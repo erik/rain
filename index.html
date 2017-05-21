@@ -141,6 +141,16 @@
 <script>
  let node = document.getElementById('main')
  let app = Elm.Main.embed(node)
+ let scrollStick = true
+
+ window.addEventListener('wheel', () => {
+     const padding = window.innerHeight
+     if (document.body.scrollTop >= document.body.scrollHeight - padding) {
+         scrollStick = true
+     } else {
+         scrollStick = false
+     }
+ })
 
  app.ports.parse_raw.subscribe(args => {
      let [server, line] = args
@@ -160,18 +170,15 @@
  })
 
  app.ports.refresh_scroll_position.subscribe(force => {
-     const PADDING = 200
-     let scrollPos = document.body.scrollTop + window.innerHeight
-
      // Bail if we're not at the bottom of the page (don't interrupt scrolling)
-     if (!force && scrollPos < document.body.scrollHeight - PADDING) {
+     if (!force && !scrollStick) {
          return
      }
 
-     // Uhm...
-     setTimeout(() => {
+     // DOM isn't fully rendered when we're called, so wait for it.
+     window.requestAnimationFrame(() =>
          document.body.scrollTop = document.body.scrollHeight
-     }, 50)
+     )
  })
 
  app.ports.send_notification.subscribe(args => {
