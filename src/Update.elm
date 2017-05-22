@@ -347,8 +347,11 @@ update msg model =
             in
                 ( { model | newServerForm = Just form }, Cmd.none )
 
-        _ ->
-            -- TODO: handle these cases
+        CloseChannel serverName channelName ->
+            -- TODO: implement me.
+            ( model, Cmd.none )
+
+        Noop ->
             ( model, Cmd.none )
 
 
