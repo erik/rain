@@ -203,7 +203,7 @@ update msg model =
                 _ =
                     Debug.log "sending" line
             in
-                ( model, WebSocket.send serverInfo.socket (line ++ "\n") )
+                ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
             ( model, Ports.parse_raw ( serverName, line ) )
