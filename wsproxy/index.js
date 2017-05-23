@@ -28,14 +28,17 @@ wss.on('connection', function connection(ws) {
         port: +query.port,
         rejectUnauthorized: false
     }, function () { console.log('connected to', query.host, query.port); })
-              .setEncoding('utf8')
-              .on('data', (data) => {
-                  data.trim().split(/[\r\n]+/g).forEach(line => {
-                      console.log('<--', line);
-                      ws.send(line + '\n');
-                  });
-              })
-              .on('end', () => { ws.close(); });
+          .setEncoding('utf8')
+          .on('data', (data) => {
+              data.trim().split(/[\r\n]+/g).forEach(line => {
+                  console.log('<--', line);
+                  ws.send(line + '\n');
+              });
+          })
+          .on('end', () => { ws.close(); });
+
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
 
     ws.on('message', function incoming(message) {
         message.split(/[\r\n]+/).forEach(line => {
@@ -44,3 +47,14 @@ wss.on('connection', function connection(ws) {
         });
     }).on('close', () => socket.destroy());
 });
+
+
+// Clear out dead connections
+setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (!ws.isAlive) return ws.terminate();
+
+	ws.isAlive = false;
+	ws.ping('', false, true);
+    });
+}, 15 * 1000);
