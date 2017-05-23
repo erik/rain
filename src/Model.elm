@@ -221,11 +221,22 @@ appendLine : List LineGroup -> Line -> List LineGroup
 appendLine groups line =
     case groups of
         [] ->
-            [ { ts = line.ts, nick = line.nick, messages = [ line ] } ]
+            [ { ts = line.ts
+              , nick = line.nick
+              , messages = [ line ]
+              }
+            ]
 
         hd :: rest ->
             if hd.nick == line.nick then
                 { hd | messages = hd.messages ++ [ line ] } :: rest
             else
-                [ { ts = line.ts, nick = line.nick, messages = [ line ] }, hd ]
+                -- TODO: handle replays more effectively. don't want to have
+                -- TODO: duplicate copies of the same message if we reconnect.
+                [ { ts = line.ts
+                  , nick = line.nick
+                  , messages = [ line ]
+                  }
+                , hd
+                ]
                     ++ (List.take 1000 rest)
