@@ -13,6 +13,9 @@ port saved_servers : (ServerMetaData -> msg) -> Sub msg
 port irc_messages : (( ServerName, ParsedMessage ) -> msg) -> Sub msg
 
 
+port irc_connected : (ServerName -> msg) -> Sub msg
+
+
 
 -- Output ports
 

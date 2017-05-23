@@ -37,6 +37,8 @@ wss.on('connection', function connection(ws) {
           })
           .on('end', () => { ws.close(); });
 
+    ws.send('AUTHENTICATE\n');
+
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
 

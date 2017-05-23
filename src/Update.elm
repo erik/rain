@@ -25,6 +25,7 @@ type Msg
     | CreateChannel ServerName ChannelName
     | SelectChannel ServerName ChannelName
     | CloseChannel ServerName ChannelName
+    | ConnectIrc ServerName
     | RefreshScroll Bool
     | SendNotification String String
     | Tick Time
@@ -57,10 +58,19 @@ update msg model =
                     newChannel meta.name
                         |> \x -> { x | isServer = True }
 
+                pass =
+                    -- TODO: meta.pass should be a maybe in the first place.
+                    case meta.pass of
+                        "" ->
+                            Nothing
+
+                        _ ->
+                            Just meta.pass
+
                 info =
                     { socket = socketUrl
                     , nick = meta.nick
-                    , pass = Just meta.pass
+                    , pass = pass
                     , name = meta.name
                     , networkChannel = networkChannel
                     , channels = Dict.empty
@@ -71,28 +81,39 @@ update msg model =
                     model.serverInfo
                         |> Dict.insert meta.name info
 
-                passMsg =
-                    if meta.pass == "" then
-                        ""
-                    else
-                        "PASS " ++ meta.pass
-
-                lines =
-                    [ passMsg
-                    , "CAP REQ znc.in/server-time-iso"
-                    , "CAP REQ server-time"
-                    , "CAP END"
-                    , "NICK " ++ meta.nick
-                    , "USER " ++ meta.nick ++ " * * :" ++ meta.nick
-                    ]
-
-                connectionMessages =
-                    List.map (SendRawLine info) lines
-
                 model_ =
                     { model | serverInfo = serverInfo_ }
             in
-                List.foldr (andThen) ( model_, Cmd.none ) connectionMessages
+                ( model_, Cmd.none )
+
+        ConnectIrc serverName ->
+            case getServer model serverName of
+                Just server ->
+                    let
+                        passMsg =
+                            case server.pass of
+                                Just pass ->
+                                    "PASS " ++ pass
+
+                                Nothing ->
+                                    ""
+
+                        lines =
+                            [ passMsg
+                            , "CAP REQ znc.in/server-time-iso"
+                            , "CAP REQ server-time"
+                            , "CAP END"
+                            , "NICK " ++ server.nick
+                            , "USER " ++ server.nick ++ " * * :" ++ server.nick
+                            ]
+
+                        connectionMessages =
+                            List.map (SendRawLine server) lines
+                    in
+                        List.foldr (andThen) ( model, Cmd.none ) connectionMessages
+
+                Nothing ->
+                    Debug.crash ("Bad servername given" ++ serverName)
 
         AddLine serverName channelName line ->
             case getServerChannel model ( serverName, channelName ) of

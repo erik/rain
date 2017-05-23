@@ -152,6 +152,11 @@
 
  app.ports.parse_raw.subscribe(args => {
      let [server, line] = args
+
+     if (line.trim() === 'AUTHENTICATE') {
+         return app.ports.irc_connected.send(server)
+     }
+
      let p = parse_irc(line.replace(/[\r\n]/g, ''))
 
      if (p === null) {

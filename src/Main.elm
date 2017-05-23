@@ -2,12 +2,12 @@ module Main exposing (..)
 
 import Dict
 import Html exposing (..)
-import Time
-import WebSocket
 import Model exposing (Model, initialModel)
+import Ports
+import Time
 import Update exposing (update, Msg(..))
 import View exposing (view)
-import Ports
+import WebSocket
 
 
 main : Program Never Model Msg
@@ -40,6 +40,7 @@ subscriptions model =
     in
         Sub.batch
             ([ Ports.irc_messages ReceiveLine
+             , Ports.irc_connected ConnectIrc
              , Ports.saved_servers AddServer
              , Time.every Time.second Tick
              ]
