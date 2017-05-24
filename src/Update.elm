@@ -91,12 +91,9 @@ update msg model =
                 Just server ->
                     let
                         passMsg =
-                            case server.pass of
-                                Just pass ->
-                                    "PASS " ++ pass
-
-                                Nothing ->
-                                    ""
+                            server.pass
+                                |> Maybe.map (\pass -> "PASS " ++ pass)
+                                |> Maybe.withDefault ""
 
                         lines =
                             [ passMsg
