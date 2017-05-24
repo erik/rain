@@ -52,7 +52,7 @@ update msg model =
                         |> String.join "&"
 
                 socketUrl =
-                    String.join "" [ "ws://", meta.proxyHost, "?", queryString ]
+                    String.join "" [ meta.proxyHost, "?", queryString ]
 
                 networkChannel =
                     newChannel meta.name
