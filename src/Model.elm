@@ -156,7 +156,7 @@ setChannel ( serverName, channelName ) chan model =
             else
                 let
                     channels =
-                        D.insert channelName chan serverInfo.channels
+                        D.insert (String.toLower channelName) chan serverInfo.channels
                 in
                     { serverInfo | channels = channels }
     in
@@ -171,7 +171,7 @@ getChannel model ( serverName, channelName ) =
                 if channelName == serverBufferName then
                     Just info.networkChannel
                 else
-                    D.get channelName info.channels
+                    D.get (String.toLower channelName) info.channels
             )
 
 
