@@ -152,7 +152,7 @@ update msg model =
 
         SendLine serverInfo chanInfo line ->
             let
-                privmsg msg =
+                privmsg target msg =
                     let
                         line =
                             { ts = Date.fromTime model.currentTime
@@ -161,10 +161,10 @@ update msg model =
                             }
 
                         nextMsg =
-                            AddLine serverInfo.name chanInfo.name line
+                            AddLine serverInfo.name target line
 
                         rawLine =
-                            String.join " " [ "PRIVMSG", chanInfo.name, ":" ++ msg ]
+                            String.join " " [ "PRIVMSG", target, ":" ++ msg ]
                     in
                         ( rawLine, nextMsg )
 
@@ -187,20 +187,20 @@ update msg model =
                                 action =
                                     String.join "" [ "\x01", "ACTION ", msg, "\x01" ]
                             in
-                                privmsg action
+                                privmsg chanInfo.name action
 
-                        "/privmsg" :: rest ->
+                        "/msg" :: target :: rest ->
                             let
                                 msg =
                                     String.join " " rest
                             in
-                                privmsg msg
+                                privmsg target msg
 
                         _ ->
                             if String.startsWith "/" line then
                                 ( String.dropLeft 1 line, Noop )
                             else
-                                privmsg line
+                                privmsg chanInfo.name line
 
                 model_ =
                     { model | inputLine = "" }
