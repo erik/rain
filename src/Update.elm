@@ -430,10 +430,17 @@ handleMessage serverName parsedMsg date model =
                     in
                         ( { model_ | current = current_ }, Cmd.none )
 
-                Irc.Privmsg { from, target, text } ->
+                Irc.Privmsg { from, target, text, notice } ->
                     let
+                        -- FIXME: this is a hack.
+                        noticeText =
+                            if notice then
+                                "NOTICE: " ++ text
+                            else
+                                text
+
                         newLine =
-                            { ts = date, nick = from.nick, message = text }
+                            { ts = date, nick = from.nick, message = noticeText }
 
                         newMsg =
                             AddLine serverName target newLine

@@ -26,15 +26,11 @@ type alias User =
 type Message
     = Unknown ParsedMessage
     | Ping String
-    | Notice
-        { from : User
-        , target : String
-        , text : String
-        }
     | Privmsg
         { from : User
         , target : String
         , text : String
+        , notice : Bool
         }
     | Registered
     | Joined
@@ -97,51 +93,41 @@ parse msg =
         ts =
             Date.fromTime msg.time
 
+        handleMessage isNotice =
+            let
+                user =
+                    parseUser msg.prefix
+
+                target =
+                    get 0 msg.params
+                        |> Maybe.map
+                            (\x ->
+                                if String.startsWith "#" x then
+                                    x
+                                else
+                                    user.nick
+                            )
+
+                text =
+                    get 1 msg.params
+            in
+                Privmsg
+                    { from = user
+                    , target = Maybe.withDefault "" target
+                    , text = Maybe.withDefault "" text
+                    , notice = isNotice
+                    }
+
         m =
             case msg.command of
                 "PING" ->
                     Ping (String.join " " (toList msg.params))
 
                 "PRIVMSG" ->
-                    let
-                        user =
-                            parseUser msg.prefix
-
-                        target =
-                            get 0 msg.params
-                                |> Maybe.map
-                                    (\x ->
-                                        if String.startsWith "#" x then
-                                            x
-                                        else
-                                            user.nick
-                                    )
-
-                        text =
-                            get 1 msg.params
-                    in
-                        Privmsg
-                            { from = user
-                            , target = Maybe.withDefault "" target
-                            , text = Maybe.withDefault "" text
-                            }
+                    handleMessage False
 
                 "NOTICE" ->
-                    let
-                        user =
-                            parseUser msg.prefix
-
-                        target =
-                            get 0 msg.params
-
-                        text =
-                            get 1 msg.params
-                    in
-                        Notice
-                            { from = user
-                            , target = Maybe.withDefault "" target
-                            , text = Maybe.withDefault "" text
-                            }
+                    handleMessage True
 
                 "JOIN" ->
                     let
