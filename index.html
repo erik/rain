@@ -20,6 +20,9 @@
  let app = Elm.Main.embed(node)
  let scrollStick = true
 
+ // Ask for permission to show notifications
+ if (Notification.permission === 'default') { Notification.requestPermission() }
+
  window.addEventListener('wheel', () => {
      const padding = window.innerHeight
      if (document.body.scrollTop >= document.body.scrollHeight - padding) {
