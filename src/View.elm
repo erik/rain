@@ -132,7 +132,7 @@ viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
 viewChannel model ( server, channel ) =
     div [ id "channel-view" ]
         [ div [ id "channel-header" ]
-            [ h3 [] [ text channel.name ]
+            [ h1 [] [ text channel.name ]
             , viewTopic channel
             , lazy viewChannelList model
             , hr [] []

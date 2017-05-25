@@ -1,0 +1,157 @@
+html {
+  font-family: Palatino, Georgia, serif;
+  line-height: 1.5rem;
+  font-size: 16px;
+}
+
+a, a:visited {
+  cursor: pointer;
+  text-decoration: none;
+  color: #0000cc;
+}
+
+
+h1 {
+  font-weight: normal;
+  line-height: 3rem;
+  font-size: 1.728em;
+  margin: 1.5rem 0 0;
+}
+
+p {
+  margin: 1.5rem 0 0;
+}
+
+hr {
+  margin: 0;
+  border: none;
+  padding: 1.5rem 0 0;
+}
+
+body {
+  margin: 1.5rem 1ch;
+  color: #222;
+}
+
+main {
+  display: block; /* Just in case */
+  max-width: 78ch;
+  margin: auto;
+}
+
+ul {
+  padding: 0 0 0 3ch;
+}
+
+#channel-view {
+  position: relative;
+  min-height: 100vh;
+}
+
+#channel-list {
+  position: absolute;
+  top: 0;
+  left: -20ch;
+  width: 20ch;
+  text-overflow: ellipsis;
+}
+
+#channel-list ul, li {
+  list-style-type: none;
+}
+
+#channel-header {
+  position: fixed;
+  top: 0;
+
+  background-color: white;
+  width: 78ch;
+  min-height: 50px;
+}
+
+#buffer-view {
+  overflow-y: none;
+  word-wrap: break-word;
+  padding-top: 120px;
+  padding-bottom: 30px;
+}
+
+#channel-footer {
+  position: fixed;
+  bottom: 0;
+  width: 78ch;
+  background-color: white;
+}
+
+#input-line {
+  width: 100%;
+  padding: 1ch 1ch;
+  margin: 10px 0;
+  outline: none;
+}
+
+#topic {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+
+#topic:hover {
+  white-space: normal;
+  overflow: auto;
+}
+
+#new-server-form {
+  width: 100%;
+}
+
+#new-server-form label, input {
+  display: block;
+  width: 78ch;
+  padding: 1ch 0;
+}
+
+#new-server-form input {
+  padding: 1ch;
+}
+
+.form-row {
+  display: block;
+  width: 100%;
+}
+
+.unread {
+  font-weight: bold;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.timestamp {
+  float: right;
+  color: #a0a0a0;
+}
+
+.group-messages {
+  border: rgba(0,0,0,.05) solid;
+  border-width: 0 0 0 .5ch;
+  padding-left: .5ch;
+}
+
+.message-nick {
+  font-weight: bold;
+}
+
+.message-nick-self {
+  font-style: italic;
+}
+
+.highlight {
+  background-color: #ffffdd;
+}
+
+.action {
+  font-style: italic;
+}
