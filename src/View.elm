@@ -29,10 +29,7 @@ view model =
                 _ ->
                     div [] [ text "nothing." ]
     in
-        div []
-            [ lazy viewChannelList model
-            , chatView
-            ]
+        div [] [ chatView ]
 
 
 viewForm : Form () ServerMetaData -> Html Form.Msg
@@ -128,7 +125,7 @@ viewChannelList model =
         addServer =
             li [ class "clickable", onClick ShowAddServerForm ] [ text "add server" ]
     in
-        aside [ id "channel-list" ] [ ul [] (addServer :: serverList) ]
+        div [ id "channel-list" ] [ ul [] (addServer :: serverList) ]
 
 
 viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
@@ -137,6 +134,7 @@ viewChannel model ( server, channel ) =
         [ div [ id "channel-header" ]
             [ h3 [] [ text channel.name ]
             , viewTopic channel
+            , lazy viewChannelList model
             , hr [] []
             ]
         , lazy2 viewBuffer server channel
