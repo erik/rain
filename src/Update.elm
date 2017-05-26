@@ -190,6 +190,13 @@ update msg model =
                             in
                                 privmsg target msg
 
+                        "/quote" :: rest ->
+                            let
+                                msg =
+                                    String.join " " rest
+                            in
+                                ( msg, Noop )
+
                         _ ->
                             if String.startsWith "/" line then
                                 ( String.dropLeft 1 line, Noop )
@@ -303,7 +310,6 @@ update msg model =
                                             |> List.append (List.take ((List.length words) - 1) words)
                                             |> String.join " "
                         in
-                            -- TODO: handle nick / command completion for real
                             ( { model | inputLine = String.trimLeft newInput }, Cmd.none )
 
                     Nothing ->
