@@ -88,6 +88,8 @@ ul {
   padding: 1ch 1ch;
   margin: 10px 0;
   outline: none;
+  border-radius: 5px;
+  border: 1px solid rgba(0,0,0,.15);
 }
 
 #topic {
