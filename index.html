@@ -69,8 +69,9 @@
  app.ports.send_notification.subscribe(args => {
      let [title, message] = args
 
-     let not = new Notification(title, {body: message})
-     setTimeout(not.close.bind(not), 5000)
+     let notif = new Notification(title, {body: message})
+
+     setTimeout(notif.close.bind(notif), 5000)
  })
 
  // push saved server configuration

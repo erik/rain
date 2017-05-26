@@ -276,15 +276,9 @@ update msg model =
                     String.words model.inputLine
 
                 lastWord =
-                    case List.reverse words of
-                        word :: _ ->
-                            if word == "" then
-                                Nothing
-                            else
-                                Just word
-
-                        _ ->
-                            Nothing
+                    List.reverse words
+                        |> List.filter (\w -> not (String.isEmpty w))
+                        |> List.head
 
                 -- TODO: should also complete /privmsg etc
                 completions =
@@ -303,17 +297,17 @@ update msg model =
                         |> Maybe.andThen List.head
             in
                 case longestCompletion of
-                    Just c ->
+                    Just completion ->
                         let
-                            words_ =
-                                List.drop 1 words
-                                    |> String.join " "
-
-                            completion =
-                                c ++ ": "
-
                             newInput =
-                                String.join " " [ words_, completion ]
+                                case words of
+                                    [ word ] ->
+                                        completion ++ ": "
+
+                                    words ->
+                                        [ completion ]
+                                            |> List.append (List.take ((List.length words) - 1) words)
+                                            |> String.join " "
                         in
                             -- TODO: handle nick / command completion for real
                             ( { model | inputLine = String.trimLeft newInput }, Cmd.none )
