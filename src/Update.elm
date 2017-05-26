@@ -17,21 +17,21 @@ import WebSocket
 type Msg
     = AddServer ServerMetaData
     | AddLine ServerName ChannelName Line
-    | SendLine ServerInfo ChannelInfo String
-    | TypeLine String
-    | SendRawLine ServerInfo String
-    | ReceiveRawLine ServerName String
-    | ReceiveLine ( ServerName, Irc.ParsedMessage )
-    | CreateChannel ServerName ChannelName
-    | SelectChannel ServerName ChannelName
     | CloseChannel ServerName ChannelName
     | ConnectIrc ServerName
-    | RefreshScroll Bool
-    | SendNotification String String
-    | Tick Time
-    | TabCompleteLine ServerInfo ChannelInfo
-    | ShowAddServerForm
+    | CreateChannel ServerName ChannelName
     | FormMsg Form.Msg
+    | ReceiveLine ( ServerName, Irc.ParsedMessage )
+    | ReceiveRawLine ServerName String
+    | RefreshScroll Bool
+    | SelectChannel ServerName ChannelName
+    | SendLine ServerInfo ChannelInfo String
+    | SendNotification String String
+    | SendRawLine ServerInfo String
+    | ShowAddServerForm
+    | TabCompleteLine ServerInfo ChannelInfo
+    | Tick Time
+    | TypeLine String
     | Noop
 
 
@@ -56,16 +56,14 @@ update msg model =
 
                 networkChannel =
                     newChannel meta.name
-                        |> \x -> { x | isServer = True }
+                        |> \chan -> { chan | isServer = True }
 
                 pass =
                     -- TODO: meta.pass should be a maybe in the first place.
-                    case meta.pass of
-                        "" ->
-                            Nothing
-
-                        _ ->
-                            Just meta.pass
+                    if meta.pass == "" then
+                        Nothing
+                    else
+                        Just meta.pass
 
                 info =
                     { socket = socketUrl
@@ -76,7 +74,6 @@ update msg model =
                     , channels = Dict.empty
                     }
 
-                -- TODO: add in the other things
                 serverInfo_ =
                     model.serverInfo
                         |> Dict.insert meta.name info
@@ -228,7 +225,7 @@ update msg model =
 
         ReceiveLine ( serverName, parsed ) ->
             let
-                -- FIXME: lol
+                -- FIXME: it's really silly that this works like this
                 ( ts, ircMsg ) =
                     Irc.parse parsed
             in
@@ -249,20 +246,17 @@ update msg model =
                 -- FIXME: ugly naming
                 channel =
                     getOrCreateChannel model ( serverName, channelName )
-
-                channel_ =
-                    { channel | lastChecked = model.currentTime }
+                        |> \ch -> { ch | lastChecked = model.currentTime }
 
                 model_ =
-                    setChannel ( serverName, channelName ) channel_ model
-
-                model__ =
-                    { model_
-                        | current = Just ( serverName, channelName )
-                        , newServerForm = Nothing
-                    }
+                    setChannel ( serverName, channelName ) channel model
+                        |> \model ->
+                            { model
+                                | current = Just ( serverName, channelName )
+                                , newServerForm = Nothing
+                            }
             in
-                update (RefreshScroll True) model__
+                update (RefreshScroll True) model_
 
         RefreshScroll force ->
             ( model, Ports.refresh_scroll_position force )
