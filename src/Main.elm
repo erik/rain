@@ -39,9 +39,9 @@ subscriptions model =
                     )
     in
         Sub.batch
-            ([ Ports.irc_messages ReceiveLine
-             , Ports.irc_connected ConnectIrc
-             , Ports.saved_servers AddServer
+            ([ Ports.onIrcMessage ReceiveLine
+             , Ports.onIrcConnected ConnectIrc
+             , Ports.addSavedServer AddServer
              , Time.every Time.second Tick
              ]
                 ++ recvWs

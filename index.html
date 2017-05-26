@@ -32,11 +32,11 @@
      }
  })
 
- app.ports.parse_raw.subscribe(args => {
+ app.ports.parseRawLine.subscribe(args => {
      let [server, line] = args
 
      if (line.trim() === 'AUTHENTICATE') {
-         return app.ports.irc_connected.send(server)
+         return app.ports.onIrcConnected.send(server)
      }
 
      let p = parse_irc(line.replace(/[\r\n]/g, ''))
@@ -51,10 +51,10 @@
 
      console.log('parsed_message:', server, p)
 
-     app.ports.irc_messages.send([server, p])
+     app.ports.onIrcMessage.send([server, p])
  })
 
- app.ports.refresh_scroll_position.subscribe(force => {
+ app.ports.refreshScrollPosition.subscribe(force => {
      // Bail if we're not at the bottom of the page (don't interrupt scrolling)
      if (!force && !scrollStick) {
          return
@@ -66,7 +66,7 @@
      )
  })
 
- app.ports.send_notification.subscribe(args => {
+ app.ports.sendNotification.subscribe(args => {
      let [title, message] = args
 
      let notif = new Notification(title, {body: message})
@@ -78,7 +78,7 @@
  if (window.localStorage.savedServers) {
      let saved = JSON.parse(window.localStorage.savedServers)
      Object.keys(saved).forEach(k => {
-         app.ports.saved_servers.send(saved[k])
+         app.ports.addSavedServer.send(saved[k])
      })
  }
 </script>

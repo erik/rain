@@ -228,7 +228,7 @@ update msg model =
                 ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
-            ( model, Ports.parse_raw ( serverName, line ) )
+            ( model, Ports.parseRawLine ( serverName, line ) )
 
         ReceiveLine ( serverName, parsed ) ->
             let
@@ -266,10 +266,10 @@ update msg model =
                 update (RefreshScroll True) model_
 
         RefreshScroll force ->
-            ( model, Ports.refresh_scroll_position force )
+            ( model, Ports.refreshScrollPosition force )
 
         SendNotification title message ->
-            ( model, Ports.send_notification ( title, message ) )
+            ( model, Ports.sendNotification ( title, message ) )
 
         TabCompleteLine serverInfo channelInfo ->
             let

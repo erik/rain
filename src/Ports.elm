@@ -7,23 +7,23 @@ import Model exposing (..)
 -- Input ports
 
 
-port saved_servers : (ServerMetaData -> msg) -> Sub msg
+port addSavedServer : (ServerMetaData -> msg) -> Sub msg
 
 
-port irc_messages : (( ServerName, ParsedMessage ) -> msg) -> Sub msg
+port onIrcMessage : (( ServerName, ParsedMessage ) -> msg) -> Sub msg
 
 
-port irc_connected : (ServerName -> msg) -> Sub msg
+port onIrcConnected : (ServerName -> msg) -> Sub msg
 
 
 
 -- Output ports
 
 
-port send_notification : ( String, String ) -> Cmd msg
+port sendNotification : ( String, String ) -> Cmd msg
 
 
-port parse_raw : ( ServerName, String ) -> Cmd msg
+port parseRawLine : ( ServerName, String ) -> Cmd msg
 
 
-port refresh_scroll_position : Bool -> Cmd msg
+port refreshScrollPosition : Bool -> Cmd msg
