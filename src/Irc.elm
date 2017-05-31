@@ -61,8 +61,27 @@ type Message
         }
 
 
-parseUser : String -> User
-parseUser prefix =
+parseTimeTag : String -> Maybe Date.Date
+parseTimeTag tags =
+    tags
+        |> String.split ";"
+        |> List.map (String.split "=")
+        |> List.map
+            (\split ->
+                case split of
+                    [ "time", v ] ->
+                        Date.fromString v
+                            |> Result.toMaybe
+
+                    _ ->
+                        Nothing
+            )
+        |> List.head
+        |> Maybe.andThen identity
+
+
+parsePrefix : String -> User
+parsePrefix prefix =
     let
         ( nick, rest ) =
             case String.split "!" prefix of
@@ -87,16 +106,78 @@ parseUser prefix =
         }
 
 
+splitMessage : String -> Maybe ParsedMessage
+splitMessage line =
+    let
+        optional re =
+            String.concat [ "(?:", re, ")?" ]
+
+        group re =
+            String.concat [ "(", re, ")" ]
+
+        -- FIXME: this doesn't support multiple tags for now.
+        tag =
+            optional "(@(\\w+=\\S+)\\s+)"
+                |> group
+
+        prefix =
+            optional ":(\\S+)\\s+"
+                |> group
+
+        command =
+            "(\\S+)"
+                |> group
+
+        params =
+            "\\s+((?:[^:\\s]\\S*)*)(?:\\s+:?(.*))?"
+                |> group
+
+        messageRegex =
+            [ "^", tag, prefix, command, params, "$" ]
+                |> String.concat
+                |> Regex.regex
+
+        matches =
+            Regex.find Regex.All messageRegex line
+                |> Debug.log "match was this"
+                |> List.map .submatches
+                |> Debug.log "got these matches"
+    in
+        case matches of
+            [ tags :: prefix :: command :: params ] ->
+                Just
+                    { raw = line
+                    , time = 0
+                    , prefix = prefix |> Maybe.withDefault ""
+                    , command = command |> Maybe.withDefault ""
+                    , params =
+                        params
+                            |> List.map (Maybe.withDefault "")
+                            |> Array.fromList
+                    }
+
+            xs ->
+                let
+                    asdf =
+                        Debug.log "what is this" xs
+                in
+                    Nothing
+
+
 parse : ParsedMessage -> ( Date.Date, Message )
 parse msg =
     let
         ts =
             Date.fromTime msg.time
 
+        _ =
+            splitMessage msg.raw
+                |> Debug.log "split is"
+
         handleMessage isNotice =
             let
                 user =
-                    parseUser msg.prefix
+                    parsePrefix msg.prefix
 
                 target =
                     get 0 msg.params
@@ -132,7 +213,7 @@ parse msg =
                 "JOIN" ->
                     let
                         user =
-                            parseUser msg.prefix
+                            parsePrefix msg.prefix
 
                         target =
                             get 0 msg.params
@@ -145,7 +226,7 @@ parse msg =
                 "NICK" ->
                     let
                         user =
-                            parseUser msg.prefix
+                            parsePrefix msg.prefix
 
                         nick =
                             get 0 msg.params
