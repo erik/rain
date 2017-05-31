@@ -124,7 +124,7 @@ ul {
 }
 
 #buffer-messages {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     overflow-y: scroll;
     margin: 1ch 0;
 }
