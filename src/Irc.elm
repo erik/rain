@@ -112,28 +112,24 @@ splitMessage line =
         optional re =
             String.concat [ "(?:", re, ")?" ]
 
-        group re =
-            String.concat [ "(", re, ")" ]
-
         -- FIXME: this doesn't support multiple tags for now.
         tag =
-            optional "(@(\\w+=\\S+)\\s+)"
-                |> group
+            optional "@(\\w+=\\S+)\\s+"
 
         prefix =
             optional ":(\\S+)\\s+"
-                |> group
 
         command =
-            "(\\S+)"
-                |> group
+            "(\\w+)\\s+"
 
         params =
-            "\\s+((?:[^:\\s]\\S*)*)(?:\\s+:?(.*))?"
-                |> group
+            optional "([^:]+)\\s+"
+
+        lastParam =
+            optional ":(.*)"
 
         messageRegex =
-            [ "^", tag, prefix, command, params, "$" ]
+            [ "^", tag, prefix, command, params, lastParam, "$" ]
                 |> String.concat
                 |> Regex.regex
 
@@ -144,22 +140,35 @@ splitMessage line =
                 |> Debug.log "got these matches"
     in
         case matches of
-            [ tags :: prefix :: command :: params ] ->
-                Just
-                    { raw = line
-                    , time = 0
-                    , prefix = prefix |> Maybe.withDefault ""
-                    , command = command |> Maybe.withDefault ""
-                    , params =
+            [ [ tags, prefix, command, params, lastParam ] ] ->
+                let
+                    finalParam =
+                        case lastParam of
+                            Just x ->
+                                [ x ]
+
+                            _ ->
+                                []
+
+                    splitParams =
                         params
-                            |> List.map (Maybe.withDefault "")
-                            |> Array.fromList
-                    }
+                            |> Maybe.map String.words
+                            |> Maybe.withDefault []
+                in
+                    Just
+                        { raw = line
+                        , time = 0
+                        , prefix = prefix |> Maybe.withDefault ""
+                        , command = command |> Maybe.withDefault ""
+                        , params =
+                            (splitParams ++ finalParam)
+                                |> Array.fromList
+                        }
 
             xs ->
                 let
                     asdf =
-                        Debug.log "what is this" xs
+                        Debug.log "Failed to parse message:" xs
                 in
                     Nothing
 
