@@ -4,7 +4,7 @@
 
 Minimal IRC client in elm.
 
-![screenshot](http://i.imgur.com/UntZd9c.png)
+![screenshot](http://i.imgur.com/PwdHbsl.png)
 
     # Install dependencies, build, and run:
     make all dev
