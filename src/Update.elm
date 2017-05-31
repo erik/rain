@@ -160,7 +160,10 @@ update msg model =
                         rawLine =
                             String.join " " [ "PRIVMSG", target, ":" ++ msg ]
                     in
-                        ( rawLine, nextMsg )
+                        if chanInfo.isServer then
+                            ( msg, AddLine serverInfo.name serverBufferName line )
+                        else
+                            ( rawLine, nextMsg )
 
                 ( rawLine, nextMsg ) =
                     case String.words line of
