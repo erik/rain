@@ -27,7 +27,7 @@
      let messageBuffer = document.getElementById('buffer-messages')
 
      const padding = 50
-     if (messageBuffer.scrollTop >= messageBuffer.scrollHeight - padding) {
+     if (!messageBuffer || messageBuffer.scrollTop >= messageBuffer.scrollHeight - padding) {
          scrollStick = true
      } else {
          scrollStick = false
