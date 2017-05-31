@@ -23,13 +23,13 @@ view model =
                 ( Just form, _ ) ->
                     Html.map FormMsg (viewForm form)
 
-                ( Nothing, Just serverChan ) ->
-                    viewChannel model serverChan
+                ( Nothing, Just ( server, channel ) ) ->
+                    viewChannel model server channel
 
                 _ ->
                     div [] [ text "nothing." ]
     in
-        div [] [ chatView ]
+        div [ id "container" ] [ viewChannelList model, chatView ]
 
 
 viewForm : Form () ServerMetaData -> Html Form.Msg
@@ -59,7 +59,7 @@ viewForm form =
                             ]
                     )
     in
-        div [ id "new-server-form" ]
+        div [ id "buffer-view" ]
             [ h1 [] [ text "Add IRC Connection" ]
             , div [] inputsHtml
             , div [ class "form-row" ]
@@ -94,21 +94,22 @@ hasUnread chan =
 viewChannelList : Model -> Html Msg
 viewChannelList model =
     let
+        viewChanInfo serverName chanInfo =
+            li
+                [ onClick (SelectChannel serverName chanInfo.name)
+                , classList
+                    [ ( "clickable", True )
+                    , ( "unread", hasUnread chanInfo )
+                    , ( "buffer-list-item", True )
+                    ]
+                ]
+                [ text chanInfo.name ]
+
         channelList serverName channels =
             channels
                 |> Dict.values
                 |> List.sortBy .name
-                |> List.map
-                    (\chanInfo ->
-                        li
-                            [ onClick (SelectChannel serverName chanInfo.name)
-                            , classList
-                                [ ( "clickable", True )
-                                , ( "unread", hasUnread chanInfo )
-                                ]
-                            ]
-                            [ text chanInfo.name ]
-                    )
+                |> List.map (lazy2 viewChanInfo serverName)
 
         serverList =
             model.serverInfo
@@ -125,20 +126,18 @@ viewChannelList model =
         addServer =
             li [ class "clickable", onClick ShowAddServerForm ] [ text "add server" ]
     in
-        div [ id "channel-list" ] [ ul [] (addServer :: serverList) ]
+        div [ id "buffer-list" ] [ ul [] (addServer :: serverList) ]
 
 
-viewChannel : Model -> ( ServerInfo, ChannelInfo ) -> Html Msg
-viewChannel model ( server, channel ) =
-    div [ id "channel-view" ]
-        [ div [ id "channel-header" ]
+viewChannel : Model -> ServerInfo -> ChannelInfo -> Html Msg
+viewChannel model server channel =
+    div [ id "buffer-view" ]
+        [ div [ id "buffer-header", class "flex-fixed" ]
             [ h1 [] [ text channel.name ]
             , viewTopic channel
-            , lazy viewChannelList model
-            , hr [] []
             ]
         , lazy2 viewBuffer server channel
-        , div [ id "channel-footer" ]
+        , div [ id "buffer-footer", class "flex-fixed" ]
             [ input
                 [ id "input-line"
                 , placeholder server.nick
@@ -188,7 +187,7 @@ onInputKey model server channel =
 
 viewTopic : ChannelInfo -> Html Msg
 viewTopic channel =
-    div [ id "topic" ] [ text <| Maybe.withDefault "" channel.topic ]
+    div [ id "buffer-topic" ] [ text <| Maybe.withDefault "" channel.topic ]
 
 
 viewBuffer : ServerInfo -> ChannelInfo -> Html Msg
@@ -199,7 +198,7 @@ viewBuffer serverInfo channel =
                 |> List.reverse
                 |> List.map (viewLineGroup serverInfo)
     in
-        div [ id "buffer-view" ] lines
+        div [ id "buffer-messages" ] lines
 
 
 viewLineGroup : ServerInfo -> LineGroup -> Html Msg

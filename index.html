@@ -12,7 +12,7 @@
 </head>
 
 <body id="body">
-    <main id="main"></main>
+    <div id="main"></div>
 </body>
 
 <script>
@@ -24,8 +24,10 @@
  if (Notification.permission === 'default') { Notification.requestPermission() }
 
  window.addEventListener('wheel', () => {
-     const padding = window.innerHeight
-     if (document.body.scrollTop >= document.body.scrollHeight - padding) {
+     let messageBuffer = document.getElementById('buffer-messages')
+
+     const padding = 50
+     if (messageBuffer.scrollTop >= messageBuffer.scrollHeight - padding) {
          scrollStick = true
      } else {
          scrollStick = false
@@ -61,9 +63,10 @@
      }
 
      // DOM isn't fully rendered when we're called, so wait for it.
-     window.requestAnimationFrame(() =>
-         document.body.scrollTop = document.body.scrollHeight
-     )
+     window.requestAnimationFrame(() => {
+         let messageBuffer = document.getElementById('buffer-messages')
+         if (messageBuffer) messageBuffer.scrollTop = messageBuffer.scrollHeight
+     })
  })
 
  app.ports.sendNotification.subscribe(args => {
