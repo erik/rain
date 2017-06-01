@@ -20,14 +20,15 @@
  let scrollStick = true
 
  // Ask for permission to show notifications
- if (Notification.permission === 'default') { Notification.requestPermission() }
+ if (Notification.permission === 'default') {
+     Notification.requestPermission()
+ }
 
  window.addEventListener('wheel', () => {
      let messageBuffer = document.getElementById('buffer-messages')
 
      const padding = 50
-     if (!messageBuffer ||
-         messageBuffer.scrollTop + messageBuffer.clientHeight >=
+     if (!messageBuffer || messageBuffer.scrollTop + messageBuffer.clientHeight >=
              messageBuffer.scrollHeight - padding) {
          scrollStick = true
      } else {

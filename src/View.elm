@@ -73,22 +73,15 @@ viewForm form =
 hasUnread : ChannelInfo -> Bool
 hasUnread chan =
     let
-        lastMsg =
+        lastMessageTs =
             chan.buffer
                 |> List.head
-                |> Maybe.map .messages
-                |> Maybe.map List.reverse
-                |> Maybe.andThen List.head
-
-        lastMsgTs =
-            case lastMsg of
-                Just msg ->
-                    Date.toTime msg.ts
-
-                Nothing ->
-                    chan.lastChecked
+                |> Maybe.andThen (\grp -> List.head grp.messages)
+                |> Maybe.map (\msg -> msg.ts)
+                |> Maybe.map Date.toTime
+                |> Maybe.withDefault chan.lastChecked
     in
-        chan.lastChecked < lastMsgTs
+        chan.lastChecked < lastMessageTs
 
 
 viewChannelList : Model -> Html Msg
@@ -195,7 +188,6 @@ viewBuffer serverInfo channel =
     let
         lines =
             channel.buffer
-                |> List.reverse
                 |> List.map (viewLineGroup serverInfo)
     in
         div [ id "buffer-messages" ] lines

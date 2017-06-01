@@ -59,6 +59,9 @@ h1 {
     border: rgba(0,0,0,.05) solid;
     border-width: 0 0 0 .5ch;
     padding-left: .5ch;
+    display: flex;
+    flex-direction: column-reverse;
+    flex: 1;
 }
 
 #buffer-topic {
@@ -124,6 +127,8 @@ ul {
     flex: 1 1 auto;
     overflow-y: scroll;
     margin: 1ch 0;
+    display: flex;
+    flex-direction: column-reverse;
 }
 
 #buffer-footer {
