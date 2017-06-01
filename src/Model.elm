@@ -70,11 +70,9 @@ type alias Buffer =
 
 type alias UserInfo =
     { nick : String
-    , user : String
     , host : String
-    , name : String
-
-    -- TODO: oper, etc?
+    , real : String
+    , isServer : Bool
     }
 
 

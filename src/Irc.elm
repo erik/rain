@@ -1,6 +1,5 @@
 module Irc exposing (..)
 
-import Array exposing (..)
 import Date
 import Model
 import Regex exposing (HowMany(All))
@@ -8,57 +7,11 @@ import Regex exposing (HowMany(All))
 
 type alias ParsedMessage =
     { raw : String
-    , time : Float
-    , prefix : String
+    , time : Maybe Date.Date
+    , user : Model.UserInfo
     , command : String
-    , params : Array String
+    , params : List String
     }
-
-
-type alias User =
-    { isServer : Bool
-    , nick : String
-    , hostname : String
-    , realname : String
-    }
-
-
-type Message
-    = Unknown ParsedMessage
-    | Ping String
-    | Privmsg
-        { from : User
-        , target : String
-        , text : String
-        , notice : Bool
-        }
-    | Registered
-    | Joined
-        { who : User
-        , channel : String
-        }
-    | Parted
-        { who : User
-        , channel : String
-        , reason : Maybe String
-        }
-    | Topic
-        { who : User
-        , channel : String
-        , text : Maybe String
-        }
-    | TopicIs { text : String, channel : String }
-    | NickList { channel : String, users : List Model.UserInfo }
-    | Nick
-        { who : User
-        , nick : String
-        }
-    | Kicked
-        { who : User
-        , whom : String
-        , channel : String
-        , reason : Maybe String
-        }
 
 
 parseTimeTag : String -> Maybe Date.Date
@@ -80,7 +33,7 @@ parseTimeTag tags =
         |> Maybe.andThen identity
 
 
-parsePrefix : String -> User
+parsePrefix : String -> Model.UserInfo
 parsePrefix prefix =
     let
         ( nick, rest ) =
@@ -101,8 +54,8 @@ parsePrefix prefix =
     in
         { isServer = nick == ""
         , nick = nick
-        , hostname = host
-        , realname = real
+        , host = host
+        , real = real
         }
 
 
@@ -123,10 +76,10 @@ splitMessage line =
             "(\\w+)\\s+"
 
         params =
-            optional "([^:]+)\\s+"
+            optional "([^:]+)\\s*"
 
         lastParam =
-            optional ":(.*)"
+            optional ":(.*?)"
 
         messageRegex =
             [ "^", tag, prefix, command, params, lastParam, "$" ]
@@ -135,12 +88,10 @@ splitMessage line =
 
         matches =
             Regex.find Regex.All messageRegex line
-                |> Debug.log "match was this"
                 |> List.map .submatches
-                |> Debug.log "got these matches"
     in
         case matches of
-            [ [ tags, prefix, command, params, lastParam ] ] ->
+            [ [ tags, prefix, Just command, params, lastParam ] ] ->
                 let
                     finalParam =
                         case lastParam of
@@ -157,138 +108,18 @@ splitMessage line =
                 in
                     Just
                         { raw = line
-                        , time = 0
-                        , prefix = prefix |> Maybe.withDefault ""
-                        , command = command |> Maybe.withDefault ""
-                        , params =
-                            (splitParams ++ finalParam)
-                                |> Array.fromList
+                        , time = tags |> Maybe.andThen parseTimeTag
+                        , user =
+                            prefix
+                                |> Maybe.withDefault ""
+                                |> parsePrefix
+                        , command = command
+                        , params = splitParams ++ finalParam
                         }
 
-            xs ->
+            _ ->
                 let
-                    asdf =
-                        Debug.log "Failed to parse message:" xs
+                    _ =
+                        Debug.log "Failed to parse message" line
                 in
                     Nothing
-
-
-parse : ParsedMessage -> ( Date.Date, Message )
-parse msg =
-    let
-        ts =
-            Date.fromTime msg.time
-
-        _ =
-            splitMessage msg.raw
-                |> Debug.log "split is"
-
-        handleMessage isNotice =
-            let
-                user =
-                    parsePrefix msg.prefix
-
-                target =
-                    get 0 msg.params
-                        |> Maybe.map
-                            (\x ->
-                                if String.startsWith "#" x then
-                                    x
-                                else
-                                    user.nick
-                            )
-
-                text =
-                    get 1 msg.params
-            in
-                Privmsg
-                    { from = user
-                    , target = Maybe.withDefault "" target
-                    , text = Maybe.withDefault "" text
-                    , notice = isNotice
-                    }
-
-        m =
-            case msg.command of
-                "PING" ->
-                    Ping (String.join " " (toList msg.params))
-
-                "PRIVMSG" ->
-                    handleMessage False
-
-                "NOTICE" ->
-                    handleMessage True
-
-                "JOIN" ->
-                    let
-                        user =
-                            parsePrefix msg.prefix
-
-                        target =
-                            get 0 msg.params
-                    in
-                        Joined
-                            { who = user
-                            , channel = Maybe.withDefault "what" target
-                            }
-
-                "NICK" ->
-                    let
-                        user =
-                            parsePrefix msg.prefix
-
-                        nick =
-                            get 0 msg.params
-                    in
-                        Nick
-                            { who = user
-                            , nick = Maybe.withDefault "[bug]" nick
-                            }
-
-                "332" ->
-                    let
-                        target =
-                            get 1 msg.params
-
-                        topic =
-                            get 2 msg.params
-                    in
-                        TopicIs
-                            { text = Maybe.withDefault "what" topic
-                            , channel = Maybe.withDefault "what" target
-                            }
-
-                "353" ->
-                    let
-                        specialChars =
-                            Regex.regex "[%@~\\+]+"
-
-                        mkUserInfo nickStr =
-                            nickStr
-                                |> Regex.replace All specialChars (\_ -> "")
-                                |> (\nick ->
-                                        { nick = nick
-                                        , user = ""
-                                        , host = ""
-                                        , name = ""
-                                        }
-                                   )
-
-                        users =
-                            get 3 msg.params
-                                |> Maybe.withDefault ""
-                                |> String.words
-                                |> List.map mkUserInfo
-
-                        channel =
-                            get 2 msg.params
-                    in
-                        NickList
-                            { channel = Maybe.withDefault "wtf" channel
-                            , users = users
-                            }
-
-                _ ->
-                    Unknown msg
-    in
-        ( ts, m )

@@ -110,10 +110,6 @@ ul {
     margin: 0;
 }
 
-#buffer-header {
-    border-bottom: 2px solid #222;
-}
-
 #buffer-view {
     display: flex;
     min-width: 25ch;
@@ -128,6 +124,10 @@ ul {
     flex: 1 1 auto;
     overflow-y: scroll;
     margin: 1ch 0;
+}
+
+#buffer-footer {
+    padding-bottom: 1ch;
 }
 
 .flex-fixed {

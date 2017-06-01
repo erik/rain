@@ -32,29 +32,7 @@
      } else {
          scrollStick = false
      }
- })
-
- app.ports.parseRawLine.subscribe(args => {
-     let [server, line] = args
-
-     if (line.trim() === 'AUTHENTICATE') {
-         return app.ports.onIrcConnected.send(server)
-     }
-
-     let p = parse_irc(line.replace(/[\r\n]/g, ''))
-
-     if (p === null) {
-         console.error('failed to parse message:', line)
-         return
-     }
-
-     p.time = p.tags.time ? +new Date(p.tags.time) : Date.now()
-     p.prefix = p.prefix || ''
-
-     console.log('parsed_message:', server, p)
-
-     app.ports.onIrcMessage.send([server, p])
- })
+ }, {passive: true})
 
  app.ports.refreshScrollPosition.subscribe(force => {
      // Bail if we're not at the bottom of the page (don't interrupt scrolling)

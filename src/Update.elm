@@ -1,6 +1,5 @@
 module Update exposing (Msg(..), update)
 
-import Array
 import Date exposing (Date)
 import Debug
 import Dict
@@ -9,7 +8,6 @@ import Irc
 import Model exposing (..)
 import Ports
 import Regex
-import Set
 import Time exposing (Time)
 import WebSocket
 
@@ -18,10 +16,9 @@ type Msg
     = AddServer ServerMetaData
     | AddLine ServerName ChannelName Line
     | CloseChannel ServerName ChannelName
-    | ConnectIrc ServerName
+    | ConnectIrc ServerInfo
     | CreateChannel ServerName ChannelName
     | FormMsg Form.Msg
-    | ReceiveLine ( ServerName, Irc.ParsedMessage )
     | ReceiveRawLine ServerName String
     | RefreshScroll Bool
     | SelectChannel ServerName ChannelName
@@ -83,31 +80,26 @@ update msg model =
             in
                 ( model_, Cmd.none )
 
-        ConnectIrc serverName ->
-            case getServer model serverName of
-                Just server ->
-                    let
-                        passMsg =
-                            server.pass
-                                |> Maybe.map (\pass -> "PASS " ++ pass)
-                                |> Maybe.withDefault ""
+        ConnectIrc server ->
+            let
+                passMsg =
+                    server.pass
+                        |> Maybe.map (\pass -> "PASS " ++ pass)
+                        |> Maybe.withDefault ""
 
-                        lines =
-                            [ passMsg
-                            , "CAP REQ znc.in/server-time-iso"
-                            , "CAP REQ server-time"
-                            , "CAP END"
-                            , "NICK " ++ server.nick
-                            , "USER " ++ server.nick ++ " * * :" ++ server.nick
-                            ]
+                lines =
+                    [ passMsg
+                    , "CAP REQ znc.in/server-time-iso"
+                    , "CAP REQ server-time"
+                    , "CAP END"
+                    , "NICK " ++ server.nick
+                    , "USER " ++ server.nick ++ " * * :" ++ server.nick
+                    ]
 
-                        connectionMessages =
-                            List.map (SendRawLine server) lines
-                    in
-                        List.foldr (andThen) ( model, Cmd.none ) connectionMessages
-
-                Nothing ->
-                    Debug.crash ("Bad servername given" ++ serverName)
+                connectionMessages =
+                    List.map (SendRawLine server) lines
+            in
+                List.foldr (andThen) ( model, Cmd.none ) connectionMessages
 
         AddLine serverName channelName line ->
             case getServerChannel model ( serverName, channelName ) of
@@ -231,15 +223,43 @@ update msg model =
                 ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
-            ( model, Ports.parseRawLine ( serverName, line ) )
-
-        ReceiveLine ( serverName, parsed ) ->
             let
-                -- FIXME: it's really silly that this works like this
-                ( ts, ircMsg ) =
-                    Irc.parse parsed
+                handleLine serverInfo line =
+                    let
+                        msg =
+                            Irc.splitMessage line
+
+                        -- Grab the time out of the message or default to current time.
+                        ts =
+                            msg
+                                |> Maybe.andThen .time
+                                |> Maybe.withDefault (Date.fromTime model.currentTime)
+                    in
+                        if line == "AUTHENTICATE" then
+                            update (ConnectIrc serverInfo)
+                        else
+                            msg
+                                |> Maybe.map (\m -> handleCommand serverInfo m ts)
+                                |> Maybe.withDefault (\model -> ( model, Cmd.none ))
             in
-                handleMessage serverName ircMsg ts model
+                case getServer model serverName of
+                    Just serverInfo ->
+                        String.trim line
+                            |> String.lines
+                            |> List.filter (not << String.isEmpty)
+                            |> List.map (handleLine serverInfo)
+                            |> List.foldr
+                                (\handler ( model, cmd ) ->
+                                    let
+                                        ( model_, cmd_ ) =
+                                            handler model
+                                    in
+                                        model_ ! [ cmd, cmd_ ]
+                                )
+                                ( model, Cmd.none )
+
+                    _ ->
+                        Debug.crash "getServer was none?" ( model, Cmd.none )
 
         CreateChannel serverName channelName ->
             let
@@ -381,147 +401,175 @@ andThen msg ( model, cmd ) =
         newModel ! [ cmd, newCmd ]
 
 
-ignoredCommands : Set.Set String
-ignoredCommands =
-    Set.fromList [ "333", "366" ]
+handleMessage : ServerInfo -> UserInfo -> String -> String -> Date -> Model -> ( Model, Cmd Msg )
+handleMessage serverInfo user target message ts model =
+    let
+        target_ =
+            if String.startsWith "#" target then
+                target
+            else
+                user.nick
+
+        nick =
+            if user.isServer then
+                serverInfo.name
+            else
+                user.nick
+
+        newLine =
+            { ts = ts, nick = nick, message = message }
+
+        newMsg =
+            AddLine serverInfo.name target_ newLine
+
+        refreshMsg =
+            if Just ( serverInfo.name, target_ ) == model.current then
+                RefreshScroll False
+            else
+                Noop
+    in
+        update newMsg model
+            |> andThen refreshMsg
 
 
-handleMessage : ServerName -> Irc.Message -> Date -> Model -> ( Model, Cmd Msg )
-handleMessage serverName parsedMsg date model =
-    case getServer model serverName of
-        Just serverInfo ->
-            case parsedMsg of
-                Irc.Ping x ->
-                    update (SendRawLine serverInfo ("PONG " ++ x)) model
+handleCommand : ServerInfo -> Irc.ParsedMessage -> Date -> Model -> ( Model, Cmd Msg )
+handleCommand serverInfo msg date model =
+    case ( msg.command, msg.params ) of
+        -- Clean out the buffers when we rejoin.
+        -- TODO: this should be conditional on whether or not this is a bouncer.
+        ( "001", _ ) ->
+            let
+                channels_ =
+                    serverInfo.channels
+                        |> Dict.map (\_ v -> { v | buffer = [] })
 
-                Irc.Joined { who, channel } ->
-                    let
-                        user =
-                            { nick = who.nick
-                            , user = who.realname
-                            , host = who.hostname
-                            , name = who.realname
-                            }
+                serverInfo_ =
+                    { serverInfo | channels = channels_ }
 
-                        serverChan =
-                            ( serverName, channel )
+                model_ =
+                    model.serverInfo
+                        |> Dict.insert serverInfo.name serverInfo_
+                        |> \x -> { model | serverInfo = x }
+            in
+                ( model_, Cmd.none )
 
-                        chanInfo =
-                            getChannel model serverChan
-                                |> Maybe.withDefault (Model.newChannel channel)
+        ( "PING", params ) ->
+            update (SendRawLine serverInfo ("PONG " ++ (String.concat params))) model
 
-                        chanInfo_ =
-                            { chanInfo | users = Dict.insert who.nick user chanInfo.users }
+        ( "JOIN", [ channel ] ) ->
+            let
+                serverChan =
+                    ( serverInfo.name, channel )
 
-                        model_ =
-                            setChannel serverChan chanInfo_ model
+                chanInfo =
+                    getChannel model serverChan
+                        |> Maybe.withDefault (Model.newChannel channel)
 
-                        current_ =
-                            if serverInfo.nick == who.nick then
-                                Just serverChan
-                            else
-                                model.current
-                    in
-                        ( { model_ | current = current_ }, Cmd.none )
+                chanInfo_ =
+                    { chanInfo | users = Dict.insert msg.user.nick msg.user chanInfo.users }
 
-                Irc.Privmsg { from, target, text, notice } ->
-                    let
-                        -- FIXME: this is a hack.
-                        noticeText =
-                            if notice then
-                                "NOTICE: " ++ text
-                            else
-                                text
+                model_ =
+                    setChannel serverChan chanInfo_ model
 
-                        newLine =
-                            { ts = date, nick = from.nick, message = noticeText }
+                current_ =
+                    if serverInfo.nick == msg.user.nick then
+                        Just serverChan
+                    else
+                        model.current
+            in
+                ( { model_ | current = current_ }, Cmd.none )
 
-                        newMsg =
-                            AddLine serverName target newLine
+        ( "PRIVMSG", [ target, message ] ) ->
+            handleMessage serverInfo msg.user target message date model
 
-                        refreshMsg =
-                            if Just ( serverInfo.name, target ) == model.current then
-                                RefreshScroll False
-                            else
-                                Noop
-                    in
-                        update newMsg model
-                            |> andThen refreshMsg
+        ( "NOTICE", [ target, message ] ) ->
+            let
+                notice =
+                    "NOTICE: " ++ message
+            in
+                handleMessage serverInfo msg.user target notice date model
 
-                Irc.TopicIs { channel, text } ->
-                    let
-                        chanInfo =
-                            getOrCreateChannel model ( serverName, channel )
+        -- You have been marked as being away
+        ( "306", _ ) ->
+            ( model, Cmd.none )
 
-                        chanInfo_ =
-                            { chanInfo | topic = Just text }
-                    in
-                        ( setChannel ( serverName, channel ) chanInfo_ model, Cmd.none )
+        -- Channel topic
+        ( "332", [ _, target, topic ] ) ->
+            let
+                chanInfo =
+                    getOrCreateChannel model ( serverInfo.name, target )
 
-                Irc.Nick { who, nick } ->
-                    let
-                        server_ =
-                            if who.nick == serverInfo.nick then
-                                { serverInfo | nick = nick }
-                            else
-                                serverInfo
+                chanInfo_ =
+                    { chanInfo | topic = Just topic }
+            in
+                ( setChannel ( serverInfo.name, target ) chanInfo_ model, Cmd.none )
 
-                        model_ =
-                            { model | serverInfo = Dict.insert serverName server_ model.serverInfo }
-                    in
-                        ( model_, Cmd.none )
+        ( "333", _ ) ->
+            ( model, Cmd.none )
 
-                Irc.NickList { channel, users } ->
-                    let
-                        chanInfo =
-                            getOrCreateChannel model ( serverName, channel )
+        -- NAMES list
+        ( "353", [ _, _, channel, usersString ] ) ->
+            let
+                specialChars =
+                    Regex.regex "[%@~\\+]+"
 
-                        userDict =
-                            users
-                                |> List.map (\u -> ( u.nick, u ))
-                                |> Dict.fromList
-                                |> Dict.union chanInfo.users
+                mkUserInfo nickStr =
+                    nickStr
+                        |> Regex.replace Regex.All specialChars (\_ -> "")
+                        |> Irc.parsePrefix
 
-                        chanInfo_ =
-                            { chanInfo | users = userDict }
+                chanInfo =
+                    getOrCreateChannel model ( serverInfo.name, channel )
 
-                        model_ =
-                            setChannel ( serverName, channel ) chanInfo_ model
-                    in
-                        ( model_, Cmd.none )
+                userDict =
+                    String.words usersString
+                        |> List.map mkUserInfo
+                        |> List.map (\u -> ( u.nick, u ))
+                        |> Dict.fromList
+                        |> Dict.union chanInfo.users
 
-                Irc.Unknown msg ->
-                    let
-                        msgText =
-                            msg.params
-                                |> Array.toList
-                                |> List.drop 1
-                                |> String.join " "
+                chanInfo_ =
+                    { chanInfo | users = userDict }
 
-                        newLine =
-                            { ts = date
-                            , nick = msg.prefix
-                            , message = String.join ": " [ msg.command, msgText ]
-                            }
+                model_ =
+                    setChannel ( serverInfo.name, channel ) chanInfo_ model
+            in
+                ( model_, Cmd.none )
 
-                        newMsg =
-                            AddLine serverName serverBufferName newLine
+        -- END of /NAMES
+        ( "366", _ ) ->
+            ( model, Cmd.none )
 
-                        _ =
-                            Debug.log "unknown msg" msg
-                    in
-                        if Set.member msg.command ignoredCommands then
-                            ( model, Cmd.none )
-                        else
-                            update newMsg model
-                                |> andThen (RefreshScroll False)
+        ( "NICK", [ nick ] ) ->
+            let
+                server_ =
+                    if msg.user.nick == serverInfo.nick then
+                        { serverInfo | nick = nick }
+                    else
+                        serverInfo
 
-                msg ->
-                    let
-                        _ =
-                            Debug.log "unhandled message type" msg
-                    in
-                        ( model, Cmd.none )
+                model_ =
+                    { model | serverInfo = Dict.insert serverInfo.name server_ model.serverInfo }
+            in
+                ( model_, Cmd.none )
 
-        Nothing ->
-            Debug.log "getServer was none?" ( model, Cmd.none )
+        _ ->
+            let
+                msgText =
+                    msg.params
+                        |> String.join " "
+
+                newLine =
+                    { ts = date
+                    , nick = msg.user.nick
+                    , message = String.join ": " [ msg.command, msgText ]
+                    }
+
+                newMsg =
+                    AddLine serverInfo.name serverBufferName newLine
+
+                _ =
+                    Debug.log "unknown msg" msg
+            in
+                update newMsg model
+                    |> andThen (RefreshScroll False)
