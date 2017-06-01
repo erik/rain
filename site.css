@@ -1,6 +1,6 @@
 html {
     line-height: 1.4rem;
-    font-family: Optima, Palatino, Georgia, serif;
+    font-family: Palatino, Georgia, serif;
     font-size: 16px;
     color: #222;
 }
@@ -43,7 +43,7 @@ h1 {
 }
 
 .unread {
-    font-weight: 500;
+    font-weight: 900;
 }
 
 .clickable {
@@ -59,6 +59,9 @@ h1 {
     border: rgba(0,0,0,.05) solid;
     border-width: 0 0 0 .5ch;
     padding-left: .5ch;
+    display: flex;
+    flex-direction: column-reverse;
+    flex: 1;
 }
 
 #buffer-topic {
@@ -66,6 +69,7 @@ h1 {
     overflow: hidden;
     white-space: nowrap;
     width: 100%;
+    padding-bottom: .5em;
 }
 
 #buffer-topic:hover {
@@ -109,10 +113,6 @@ ul {
     margin: 0;
 }
 
-#buffer-header {
-    border-bottom: 2px solid #222;
-}
-
 #buffer-view {
     display: flex;
     min-width: 25ch;
@@ -127,6 +127,12 @@ ul {
     flex: 1 1 auto;
     overflow-y: scroll;
     margin: 1ch 0;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+#buffer-footer {
+    padding-bottom: 1ch;
 }
 
 .flex-fixed {

@@ -70,11 +70,9 @@ type alias Buffer =
 
 type alias UserInfo =
     { nick : String
-    , user : String
     , host : String
-    , name : String
-
-    -- TODO: oper, etc?
+    , real : String
+    , isServer : Bool
     }
 
 
@@ -229,14 +227,13 @@ appendLine groups line =
 
         hd :: rest ->
             if hd.nick == line.nick then
-                { hd | messages = hd.messages ++ [ line ] } :: rest
+                { hd | messages = line :: hd.messages } :: rest
             else
-                -- TODO: handle replays more effectively. don't want to have
-                -- TODO: duplicate copies of the same message if we reconnect.
-                [ { ts = line.ts
-                  , nick = line.nick
-                  , messages = [ line ]
-                  }
-                , hd
-                ]
-                    ++ (List.take 1000 rest)
+                List.take 1000 rest
+                    |> List.append
+                        [ { ts = line.ts
+                          , nick = line.nick
+                          , messages = [ line ]
+                          }
+                        , hd
+                        ]

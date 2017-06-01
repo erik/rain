@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="/site.css">
 
   <script src="main.js"></script>
-  <script src="irc-parse.js"></script>
 </head>
 
 <body id="body">
@@ -21,39 +20,20 @@
  let scrollStick = true
 
  // Ask for permission to show notifications
- if (Notification.permission === 'default') { Notification.requestPermission() }
+ if (Notification.permission === 'default') {
+     Notification.requestPermission()
+ }
 
  window.addEventListener('wheel', () => {
      let messageBuffer = document.getElementById('buffer-messages')
 
      const padding = 50
-     if (!messageBuffer || messageBuffer.scrollTop >= messageBuffer.scrollHeight - padding) {
+     if (!messageBuffer || messageBuffer.scrollTop + messageBuffer.clientHeight >=
+             messageBuffer.scrollHeight - padding) {
          scrollStick = true
      } else {
          scrollStick = false
      }
- })
-
- app.ports.parseRawLine.subscribe(args => {
-     let [server, line] = args
-
-     if (line.trim() === 'AUTHENTICATE') {
-         return app.ports.onIrcConnected.send(server)
-     }
-
-     let p = parse_irc(line.replace(/[\r\n]/g, ''))
-
-     if (p === null) {
-         console.error('failed to parse message:', line)
-         return
-     }
-
-     p.time = p.tags.time ? +new Date(p.tags.time) : Date.now()
-     p.prefix = p.prefix || ''
-
-     console.log('parsed_message:', server, p)
-
-     app.ports.onIrcMessage.send([server, p])
  })
 
  app.ports.refreshScrollPosition.subscribe(force => {
