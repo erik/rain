@@ -238,8 +238,7 @@ update msg model =
                         if line == "AUTHENTICATE" then
                             update (ConnectIrc serverInfo)
                         else
-                            msg
-                                |> Maybe.map (\m -> handleCommand serverInfo m ts)
+                            Maybe.map (\msg -> handleCommand serverInfo msg ts) msg
                                 |> Maybe.withDefault (\model -> ( model, Cmd.none ))
             in
                 case getServer model serverName of
