@@ -25,13 +25,15 @@
  window.addEventListener('wheel', () => {
      let messageBuffer = document.getElementById('buffer-messages')
 
-     const padding = 150
-     if (!messageBuffer || messageBuffer.scrollTop >= messageBuffer.scrollHeight - padding) {
+     const padding = 50
+     if (!messageBuffer ||
+         messageBuffer.scrollTop + messageBuffer.clientHeight >=
+             messageBuffer.scrollHeight - padding) {
          scrollStick = true
      } else {
          scrollStick = false
      }
- }, {passive: true})
+ })
 
  app.ports.refreshScrollPosition.subscribe(force => {
      // Bail if we're not at the bottom of the page (don't interrupt scrolling)
