@@ -18,19 +18,10 @@ parseTimeTag : String -> Maybe Date.Date
 parseTimeTag tags =
     tags
         |> String.split ";"
-        |> List.map (String.split "=")
-        |> List.map
-            (\split ->
-                case split of
-                    [ "time", v ] ->
-                        Date.fromString v
-                            |> Result.toMaybe
-
-                    _ ->
-                        Nothing
-            )
+        |> List.filter (String.startsWith "time=")
+        |> List.map (String.dropLeft 5)
         |> List.head
-        |> Maybe.andThen identity
+        |> Maybe.andThen (Result.toMaybe << Date.fromString)
 
 
 parsePrefix : String -> Model.UserInfo
@@ -94,12 +85,9 @@ splitMessage line =
             [ [ tags, prefix, Just command, params, lastParam ] ] ->
                 let
                     finalParam =
-                        case lastParam of
-                            Just x ->
-                                [ x ]
-
-                            _ ->
-                                []
+                        lastParam
+                            |> Maybe.map (\x -> [ x ])
+                            |> Maybe.withDefault []
 
                     splitParams =
                         params
@@ -108,13 +96,15 @@ splitMessage line =
                 in
                     Just
                         { raw = line
-                        , time = tags |> Maybe.andThen parseTimeTag
+                        , time =
+                            tags
+                                |> Maybe.andThen parseTimeTag
                         , user =
                             prefix
                                 |> Maybe.withDefault ""
                                 |> parsePrefix
                         , command = command
-                        , params = splitParams ++ finalParam
+                        , params = List.append splitParams finalParam
                         }
 
             _ ->
