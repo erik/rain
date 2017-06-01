@@ -515,7 +515,7 @@ handleCommand serverInfo msg date model =
                 mkUserInfo nickStr =
                     nickStr
                         |> Regex.replace Regex.All specialChars (\_ -> "")
-                        |> Irc.parsePrefix
+                        |> \nick -> { isServer = False, nick = nick, host = "", real = "" }
 
                 chanInfo =
                     getOrCreateChannel model ( serverInfo.name, channel )
