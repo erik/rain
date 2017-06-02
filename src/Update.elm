@@ -247,7 +247,7 @@ update msg model =
                             |> String.lines
                             |> List.filter (not << String.isEmpty)
                             |> List.map (handleLine serverInfo)
-                            |> List.foldr
+                            |> List.foldl
                                 (\handler ( model, cmd ) ->
                                     let
                                         ( model_, cmd_ ) =
