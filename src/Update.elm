@@ -211,18 +211,10 @@ update msg model =
                         |> andThen (RefreshScroll True)
 
         TypeLine str ->
-            let
-                model_ =
-                    { model | inputLine = str }
-            in
-                ( model_, Cmd.none )
+            ( { model | inputLine = str }, Cmd.none )
 
         SendRawLine serverInfo line ->
-            let
-                _ =
-                    Debug.log "sending" line
-            in
-                ( model, WebSocket.send serverInfo.socket line )
+            ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
             let
@@ -298,11 +290,11 @@ update msg model =
         TabCompleteLine serverInfo channelInfo ->
             let
                 words =
-                    String.words model.inputLine
+                    String.split " " model.inputLine
 
                 lastWord =
                     List.reverse words
-                        |> List.filter (\w -> not (String.isEmpty w))
+                        |> List.filter (not << String.isEmpty)
                         |> List.head
 
                 -- TODO: should also complete /privmsg etc
