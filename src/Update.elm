@@ -179,11 +179,13 @@ update msg model =
                                 privmsg chanInfo.name action
 
                         "/msg" :: target :: rest ->
-                            let
-                                msg =
-                                    String.join " " rest
-                            in
-                                privmsg target msg
+                            privmsg target (String.join " " rest)
+
+                        "/ns" :: rest ->
+                            privmsg "NickServ" (String.join " " rest)
+
+                        "/cs" :: rest ->
+                            privmsg "ChanServ" (String.join " " rest)
 
                         "/quote" :: rest ->
                             let
