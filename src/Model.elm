@@ -117,11 +117,6 @@ initialModel =
     }
 
 
-getServer : Model -> ServerName -> Maybe ServerInfo
-getServer model serverName =
-    D.get serverName model.serverInfo
-
-
 newChannel : String -> ChannelInfo
 newChannel name =
     { name = name
@@ -133,44 +128,33 @@ newChannel name =
     }
 
 
-setChannel : ServerChannel -> ChannelInfo -> Model -> Model
-setChannel ( serverName, channelName ) chan model =
-    -- FIXME: we should pass in a ServerInfo value here.
-    let
-        serverInfo =
-            getServer model serverName
-                |> Maybe.withDefault
-                    { socket = "wtf"
-                    , nick = "this is a bug"
-                    , pass = Nothing
-                    , name = "bug"
-                    , channels = Dict.empty
-                    , networkChannel = newChannel serverBufferName
-                    }
+getServer : Model -> ServerName -> Maybe ServerInfo
+getServer model serverName =
+    D.get serverName model.serverInfo
 
+
+setChannel : ServerInfo -> ChannelInfo -> Model -> Model
+setChannel serverInfo chan model =
+    let
         serverInfo_ =
-            if chan.isServer then
-                { serverInfo | networkChannel = chan }
+            if chan.isServer || chan.name == serverBufferName then
+                { serverInfo | networkChannel = { chan | isServer = True } }
             else
                 let
                     channels =
-                        D.insert (String.toLower channelName) chan serverInfo.channels
+                        D.insert (String.toLower chan.name) chan serverInfo.channels
                 in
                     { serverInfo | channels = channels }
     in
-        { model | serverInfo = D.insert serverName serverInfo_ model.serverInfo }
+        { model | serverInfo = D.insert serverInfo.name serverInfo_ model.serverInfo }
 
 
-getChannel : Model -> ServerChannel -> Maybe ChannelInfo
-getChannel model ( serverName, channelName ) =
-    getServer model serverName
-        |> Maybe.andThen
-            (\info ->
-                if channelName == serverBufferName then
-                    Just info.networkChannel
-                else
-                    D.get (String.toLower channelName) info.channels
-            )
+getChannel : ServerInfo -> ChannelName -> Maybe ChannelInfo
+getChannel serverInfo channelName =
+    if channelName == serverBufferName then
+        Just serverInfo.networkChannel
+    else
+        D.get (String.toLower channelName) serverInfo.channels
 
 
 getServerChannel : Model -> ServerChannel -> Maybe ( ServerInfo, ChannelInfo )
@@ -180,39 +164,34 @@ getServerChannel model ( sn, cn ) =
             getServer model sn
 
         channel =
-            getChannel model ( sn, cn )
+            server
+                |> Maybe.andThen (\server -> getChannel server cn)
     in
-        Maybe.map2 (\s c -> ( s, c )) server channel
+        Maybe.map2 (,) server channel
 
 
-getOrCreateChannel : Model -> ServerChannel -> ChannelInfo
-getOrCreateChannel model ( serverName, channelName ) =
-    getChannel model ( serverName, channelName )
+getOrCreateChannel : ServerInfo -> ChannelName -> ChannelInfo
+getOrCreateChannel serverInfo channelName =
+    getChannel serverInfo channelName
         |> Maybe.withDefault (newChannel channelName)
 
 
 getActive : Model -> Maybe ( ServerInfo, ChannelInfo )
 getActive model =
-    let
-        server =
-            getActiveServer model
-
-        channel =
-            getActiveChannel model
-    in
-        Maybe.map2 (\s c -> ( s, c )) server channel
+    model.current
+        |> Maybe.andThen (getServerChannel model)
 
 
 getActiveChannel : Model -> Maybe ChannelInfo
 getActiveChannel model =
-    model.current
-        |> Maybe.andThen (getChannel model)
+    getActive model
+        |> Maybe.map Tuple.second
 
 
 getActiveServer : Model -> Maybe ServerInfo
 getActiveServer model =
-    model.current
-        |> Maybe.andThen (\( s, _ ) -> getServer model s)
+    getActive model
+        |> Maybe.map Tuple.first
 
 
 appendLine : List LineGroup -> Line -> List LineGroup

@@ -87,9 +87,9 @@ hasUnread chan =
 viewChannelList : Model -> Html Msg
 viewChannelList model =
     let
-        viewChanInfo serverName chanInfo =
+        viewChanInfo serverInfo chanInfo =
             li
-                [ onClick (SelectChannel serverName chanInfo.name)
+                [ onClick (SelectChannel serverInfo chanInfo.name)
                 , classList
                     [ ( "clickable", True )
                     , ( "unread", hasUnread chanInfo )
@@ -98,11 +98,11 @@ viewChannelList model =
                 ]
                 [ text chanInfo.name ]
 
-        channelList serverName channels =
-            channels
+        channelList serverInfo =
+            serverInfo.channels
                 |> Dict.values
                 |> List.sortBy .name
-                |> List.map (lazy2 viewChanInfo serverName)
+                |> List.map (lazy2 viewChanInfo serverInfo)
 
         serverList =
             model.serverInfo
@@ -110,9 +110,9 @@ viewChannelList model =
                 |> List.map
                     (\( serverName, serverInfo ) ->
                         li [ class "clickable" ]
-                            [ span [ onClick (SelectChannel serverName serverBufferName) ]
+                            [ span [ onClick (SelectChannel serverInfo serverBufferName) ]
                                 [ text serverName ]
-                            , ul [] (channelList serverName serverInfo.channels)
+                            , ul [] (channelList serverInfo)
                             ]
                     )
 
@@ -211,7 +211,7 @@ viewLineGroup serverInfo group =
                     ]
                     [ span
                         [ class "clickable"
-                        , onClick (SelectChannel serverInfo.name group.nick)
+                        , onClick (SelectChannel serverInfo group.nick)
                         ]
                         [ text group.nick ]
                     ]

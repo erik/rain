@@ -14,14 +14,15 @@ import WebSocket
 
 type Msg
     = AddServer ServerMetaData
-    | AddLine ServerName ChannelName Line
+    | AddLine ServerInfo ChannelName Line
     | CloseChannel ServerName ChannelName
     | ConnectIrc ServerInfo
-    | CreateChannel ServerName ChannelName
+    | CreateChannel ServerInfo ChannelName
     | FormMsg Form.Msg
     | ReceiveRawLine ServerName String
     | RefreshScroll Bool
-    | SelectChannel ServerName ChannelName
+    | SaveServer ServerInfo
+    | SelectChannel ServerInfo ChannelName
     | SendLine ServerInfo ChannelInfo String
     | SendNotification String String
     | SendRawLine ServerInfo String
@@ -101,40 +102,35 @@ update msg model =
             in
                 List.foldr (andThen) ( model, Cmd.none ) connectionMessages
 
-        AddLine serverName channelName line ->
-            case getServerChannel model ( serverName, channelName ) of
-                Just ( serverInfo, chanInfo ) ->
-                    let
-                        chanInfo_ =
-                            { chanInfo | buffer = appendLine chanInfo.buffer line }
+        AddLine serverInfo channelName line ->
+            let
+                chanInfo =
+                    getOrCreateChannel serverInfo channelName
+                        |> \c -> { c | buffer = appendLine c.buffer line }
 
-                        model_ =
-                            setChannel ( serverName, channelName ) chanInfo_ model
+                model_ =
+                    setChannel serverInfo chanInfo model
 
-                        nickRegexp =
-                            Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
+                nickRegexp =
+                    Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
 
-                        matchesNick =
-                            Regex.contains nickRegexp line.message
+                matchesNick =
+                    Regex.contains nickRegexp line.message
 
-                        isDirectMessage =
-                            (serverInfo.nick /= line.nick)
-                                && (not (String.startsWith "#" channelName))
+                isDirectMessage =
+                    (serverInfo.nick /= line.nick)
+                        && (not (String.startsWith "#" channelName))
 
-                        body =
-                            String.join "" [ "<", line.nick, ">: ", line.message ]
+                body =
+                    String.join "" [ "<", line.nick, ">: ", line.message ]
 
-                        cmdNotify =
-                            if matchesNick || (isDirectMessage && channelName /= serverBufferName) then
-                                SendNotification chanInfo.name body
-                            else
-                                Noop
-                    in
-                        update cmdNotify model_
-
-                Nothing ->
-                    update (CreateChannel serverName channelName) model
-                        |> andThen (AddLine serverName channelName line)
+                cmd =
+                    if (not chanInfo.isServer) && (matchesNick || isDirectMessage) then
+                        SendNotification chanInfo.name body
+                    else
+                        Noop
+            in
+                update cmd model_
 
         SendLine serverInfo chanInfo line ->
             let
@@ -147,13 +143,13 @@ update msg model =
                             }
 
                         nextMsg =
-                            AddLine serverInfo.name target line
+                            AddLine serverInfo target line
 
                         rawLine =
                             String.join " " [ "PRIVMSG", target, ":" ++ msg ]
                     in
                         if chanInfo.isServer then
-                            ( msg, AddLine serverInfo.name serverBufferName line )
+                            ( msg, AddLine serverInfo serverBufferName line )
                         else
                             ( rawLine, nextMsg )
 
@@ -252,34 +248,37 @@ update msg model =
                                 ( model, Cmd.none )
 
                     _ ->
-                        Debug.crash "getServer was none?" ( model, Cmd.none )
+                        Debug.crash "tried to select a bad server"
 
-        CreateChannel serverName channelName ->
+        CreateChannel serverInfo channelName ->
             let
                 channel =
                     Model.newChannel channelName
 
                 model_ =
-                    setChannel ( serverName, channelName ) channel model
+                    setChannel serverInfo channel model
             in
                 ( model_, Cmd.none )
 
-        SelectChannel serverName channelName ->
-            let
-                -- FIXME: ugly naming
-                channel =
-                    getOrCreateChannel model ( serverName, channelName )
-                        |> \ch -> { ch | lastChecked = model.currentTime }
+        SelectChannel serverInfo channelName ->
+            case getChannel serverInfo channelName of
+                Just channel ->
+                    let
+                        channel_ =
+                            { channel | lastChecked = model.currentTime }
 
-                model_ =
-                    setChannel ( serverName, channelName ) channel model
-                        |> \model ->
-                            { model
-                                | current = Just ( serverName, channelName )
-                                , newServerForm = Nothing
-                            }
-            in
-                update (RefreshScroll True) model_
+                        model_ =
+                            setChannel serverInfo channel_ model
+                                |> \model ->
+                                    { model
+                                        | current = Just ( serverInfo.name, channelName )
+                                        , newServerForm = Nothing
+                                    }
+                    in
+                        update (RefreshScroll True) model_
+
+                Nothing ->
+                    Debug.crash "tried to select a bad chan"
 
         RefreshScroll force ->
             ( model, Ports.refreshScrollPosition force )
@@ -336,7 +335,7 @@ update msg model =
                 model_ =
                     case getActive model of
                         Just ( serverInfo, chanInfo ) ->
-                            setChannel ( serverInfo.name, chanInfo.name )
+                            setChannel serverInfo
                                 { chanInfo | lastChecked = time }
                                 model
 
@@ -413,7 +412,7 @@ handleMessage serverInfo user target message ts model =
             { ts = ts, nick = nick, message = message }
 
         newMsg =
-            AddLine serverInfo.name target_ newLine
+            AddLine serverInfo target_ newLine
 
         refreshMsg =
             if Just ( serverInfo.name, target_ ) == model.current then
@@ -451,11 +450,8 @@ handleCommand serverInfo msg date model =
 
         ( "JOIN", [ channel ] ) ->
             let
-                serverChan =
-                    ( serverInfo.name, channel )
-
                 ( chanInfo, isNew ) =
-                    getChannel model serverChan
+                    getChannel serverInfo channel
                         |> Maybe.map (\chan -> ( chan, False ))
                         |> Maybe.withDefault ( Model.newChannel channel, True )
 
@@ -463,13 +459,13 @@ handleCommand serverInfo msg date model =
                     { chanInfo | users = Dict.insert msg.user.nick msg.user chanInfo.users }
 
                 model_ =
-                    setChannel serverChan chanInfo_ model
+                    setChannel serverInfo chanInfo_ model
 
                 current_ =
                     -- We want to switch to the channel if we joined and it
                     -- hasn't been seen before.
                     if serverInfo.nick == msg.user.nick && isNew then
-                        Just serverChan
+                        Just ( serverInfo.name, channel )
                     else
                         model.current
             in
@@ -493,12 +489,12 @@ handleCommand serverInfo msg date model =
         ( "332", [ _, target, topic ] ) ->
             let
                 chanInfo =
-                    getOrCreateChannel model ( serverInfo.name, target )
+                    getOrCreateChannel serverInfo target
 
                 chanInfo_ =
                     { chanInfo | topic = Just topic }
             in
-                ( setChannel ( serverInfo.name, target ) chanInfo_ model, Cmd.none )
+                ( setChannel serverInfo chanInfo_ model, Cmd.none )
 
         ( "333", _ ) ->
             ( model, Cmd.none )
@@ -515,7 +511,7 @@ handleCommand serverInfo msg date model =
                         |> \nick -> { isServer = False, nick = nick, host = "", real = "" }
 
                 chanInfo =
-                    getOrCreateChannel model ( serverInfo.name, channel )
+                    getOrCreateChannel serverInfo channel
 
                 userDict =
                     String.words usersString
@@ -528,7 +524,7 @@ handleCommand serverInfo msg date model =
                     { chanInfo | users = userDict }
 
                 model_ =
-                    setChannel ( serverInfo.name, channel ) chanInfo_ model
+                    setChannel serverInfo chanInfo_ model
             in
                 ( model_, Cmd.none )
 
@@ -562,7 +558,7 @@ handleCommand serverInfo msg date model =
                     }
 
                 newMsg =
-                    AddLine serverInfo.name serverBufferName newLine
+                    AddLine serverInfo serverBufferName newLine
 
                 _ =
                     Debug.log "unknown msg" msg
