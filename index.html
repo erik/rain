@@ -57,6 +57,12 @@
      setTimeout(notif.close.bind(notif), 5000)
  })
 
+ app.ports.saveServer.subscribe(metadata => {
+     let servers = JSON.parse(window.localStorage.savedServers)
+     servers[metadata.name] = metadata
+     window.localStorage.savedServers = JSON.stringify(servers)
+ })
+
  // push saved server configuration
  if (window.localStorage.savedServers) {
      let saved = JSON.parse(window.localStorage.savedServers)

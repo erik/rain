@@ -69,6 +69,7 @@ update msg model =
                     , pass = pass
                     , name = meta.name
                     , networkChannel = networkChannel
+                    , meta = meta
                     , channels = Dict.empty
                     }
 
@@ -80,6 +81,9 @@ update msg model =
                     { model | serverInfo = serverInfo_ }
             in
                 ( model_, Cmd.none )
+
+        SaveServer serverInfo ->
+            model ! [ Ports.saveServer serverInfo.meta ]
 
         ConnectIrc server ->
             let

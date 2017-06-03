@@ -45,6 +45,7 @@ type alias ServerInfo =
     , nick : String
     , pass : Maybe String
     , name : String
+    , meta : ServerMetaData
     , channels : Dict ChannelName ChannelInfo
     , networkChannel : ChannelInfo
     }
