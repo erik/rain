@@ -86,7 +86,7 @@ type alias ChannelInfo =
 
 
 type alias Model =
-    { serverInfo : Dict ServerName ServerInfo
+    { servers : Dict ServerName ServerInfo
     , current : Maybe ServerChannel
     , inputLine : String
     , currentTime : Time
@@ -108,7 +108,7 @@ newServerValidation =
 
 initialModel : Model
 initialModel =
-    { serverInfo = Dict.fromList []
+    { servers = Dict.empty
     , current = Nothing
     , inputLine = ""
     , currentTime = 0
@@ -129,7 +129,7 @@ newChannel name =
 
 getServer : Model -> ServerName -> Maybe ServerInfo
 getServer model serverName =
-    D.get serverName model.serverInfo
+    Dict.get serverName model.servers
 
 
 setChannel : ServerInfo -> ChannelInfo -> Model -> Model
@@ -145,7 +145,7 @@ setChannel serverInfo chan model =
                 in
                     { serverInfo | channels = channels }
     in
-        { model | serverInfo = D.insert serverInfo.name serverInfo_ model.serverInfo }
+        { model | servers = D.insert serverInfo.name serverInfo_ model.servers }
 
 
 getChannel : ServerInfo -> ChannelName -> Maybe ChannelInfo

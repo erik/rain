@@ -105,7 +105,7 @@ viewChannelList model =
                 |> List.map (lazy2 viewChanInfo serverInfo)
 
         serverList =
-            model.serverInfo
+            model.servers
                 |> Dict.toList
                 |> List.map
                     (\( serverName, serverInfo ) ->

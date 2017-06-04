@@ -73,11 +73,11 @@ update msg model =
                     , channels = Dict.empty
                     }
 
-                serverInfo_ =
-                    model.serverInfo
+                servers_ =
+                    model.servers
                         |> Dict.insert meta.name info
             in
-                ( { model | serverInfo = serverInfo_ }, Cmd.none )
+                ( { model | servers = servers_ }, Cmd.none )
 
         SaveServer serverInfo ->
             model ! [ Ports.saveServer serverInfo.meta ]
@@ -407,7 +407,7 @@ update msg model =
                 model_ =
                     { model
                         | current = current
-                        , serverInfo = Dict.insert serverInfo.name serverInfo_ model.serverInfo
+                        , servers = Dict.insert serverInfo.name serverInfo_ model.servers
                     }
             in
                 ( model_, Cmd.none )
@@ -473,9 +473,9 @@ handleCommand serverInfo msg date model =
                     { serverInfo | channels = channels_ }
 
                 model_ =
-                    model.serverInfo
+                    model.servers
                         |> Dict.insert serverInfo.name serverInfo_
-                        |> \info -> { model | serverInfo = info }
+                        |> \info -> { model | servers = info }
             in
                 ( model_, Cmd.none )
 
@@ -597,7 +597,7 @@ handleCommand serverInfo msg date model =
                         serverInfo
 
                 model_ =
-                    { model | serverInfo = Dict.insert serverInfo.name server_ model.serverInfo }
+                    { model | servers = Dict.insert serverInfo.name server_ model.servers }
             in
                 ( model_, Cmd.none )
 

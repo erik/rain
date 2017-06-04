@@ -30,7 +30,7 @@ subscriptions model =
     let
         -- Establish all of our open websocket connections
         recvWs =
-            model.serverInfo
+            model.servers
                 |> Dict.values
                 |> List.map
                     (\info ->
