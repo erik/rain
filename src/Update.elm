@@ -50,7 +50,7 @@ update msg model =
                         |> String.join "&"
 
                 socketUrl =
-                    String.join "" [ meta.proxyHost, "?", queryString ]
+                    String.concat [ meta.proxyHost, "?", queryString ]
 
                 networkChannel =
                     newChannel meta.name
@@ -76,11 +76,8 @@ update msg model =
                 serverInfo_ =
                     model.serverInfo
                         |> Dict.insert meta.name info
-
-                model_ =
-                    { model | serverInfo = serverInfo_ }
             in
-                ( model_, Cmd.none )
+                ( { model | serverInfo = serverInfo_ }, Cmd.none )
 
         SaveServer serverInfo ->
             model ! [ Ports.saveServer serverInfo.meta ]
@@ -126,7 +123,7 @@ update msg model =
                         && (not (String.startsWith "#" channelName))
 
                 body =
-                    String.join "" [ "<", line.nick, ">: ", line.message ]
+                    String.concat [ "<", line.nick, ">: ", line.message ]
 
                 cmd =
                     if (not chanInfo.isServer) && (matchesNick || isDirectMessage) then

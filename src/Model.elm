@@ -12,10 +12,8 @@ type alias ServerName =
     String
 
 
-
---{- TODO: rename to buffer-}
-
-
+{-| TODO: rename to buffer
+-}
 type alias ChannelName =
     String
 

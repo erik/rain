@@ -238,7 +238,7 @@ formatLine serverInfo line =
                     let
                         message =
                             rest
-                                |> String.join ""
+                                |> String.concat
                                 |> String.dropRight 1
                     in
                         ( String.join " " [ line.nick, message ], True )
