@@ -287,24 +287,20 @@ update msg model =
                 ( model_, Cmd.none )
 
         SelectChannel serverInfo channelName ->
-            case getChannel serverInfo channelName of
-                Just channel ->
-                    let
-                        channel_ =
-                            { channel | lastChecked = model.currentTime }
+            let
+                channel =
+                    getOrCreateChannel serverInfo channelName
+                        |> \chan -> { chan | lastChecked = model.currentTime }
 
-                        model_ =
-                            setChannel serverInfo channel_ model
-                                |> \model ->
-                                    { model
-                                        | current = Just ( serverInfo.name, channelName )
-                                        , newServerForm = Nothing
-                                    }
-                    in
-                        update (RefreshScroll True) model_
-
-                Nothing ->
-                    Debug.crash "tried to select a bad chan"
+                model_ =
+                    setChannel serverInfo channel model
+                        |> \model ->
+                            { model
+                                | current = Just ( serverInfo.name, channelName )
+                                , newServerForm = Nothing
+                            }
+            in
+                update (RefreshScroll True) model_
 
         RefreshScroll force ->
             ( model, Ports.refreshScrollPosition force )
