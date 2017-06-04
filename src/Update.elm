@@ -157,37 +157,47 @@ update msg model =
                         else
                             ( rawLine, nextMsg )
 
-                ( rawLine, nextMsg ) =
-                    case String.words line of
-                        [ "/join", channel ] ->
+                ctcp target command msg =
+                    let
+                        msg_ =
+                            String.concat [ "\x01", command, " ", msg, "\x01" ]
+                    in
+                        privmsg target msg_
+
+                slashCommand cmd params =
+                    case ( String.toLower cmd, params ) of
+                        ( "/join", [ channel ] ) ->
                             ( String.join " " [ "JOIN", channel ], Noop )
 
-                        [ "/part" ] ->
-                            ( "PART " ++ chanInfo.name, Noop )
+                        ( "/part", [] ) ->
+                            ( "part " ++ chanInfo.name, Noop )
 
-                        [ "/part", channel ] ->
+                        ( "/part", [ channel ] ) ->
                             ( String.join " " [ "PART", channel ], Noop )
 
-                        "/me" :: rest ->
+                        ( "/me", rest ) ->
                             let
                                 msg =
                                     String.join " " rest
-
-                                action =
-                                    String.join "" [ "\x01", "ACTION ", msg, "\x01" ]
                             in
-                                privmsg chanInfo.name action
+                                ctcp chanInfo.name "ACTION" msg
 
-                        "/msg" :: target :: rest ->
+                        ( "/privmsg", target :: rest ) ->
                             privmsg target (String.join " " rest)
 
-                        "/ns" :: rest ->
+                        ( "/msg", target :: rest ) ->
+                            privmsg target (String.join " " rest)
+
+                        ( "/ping", [ target ] ) ->
+                            ctcp target "PING" (toString model.currentTime)
+
+                        ( "/ns", rest ) ->
                             privmsg "NickServ" (String.join " " rest)
 
-                        "/cs" :: rest ->
+                        ( "/cs", rest ) ->
                             privmsg "ChanServ" (String.join " " rest)
 
-                        "/quote" :: rest ->
+                        ( "/quote", rest ) ->
                             let
                                 msg =
                                     String.join " " rest
@@ -195,10 +205,22 @@ update msg model =
                                 ( msg, Noop )
 
                         _ ->
-                            if String.startsWith "/" line then
-                                ( String.dropLeft 1 line, Noop )
-                            else
-                                privmsg chanInfo.name line
+                            let
+                                line =
+                                    { ts = Date.fromTime model.currentTime
+                                    , nick = "*error"
+                                    , message = "unknown command, did you forget to /quote?"
+                                    }
+                            in
+                                ( "", AddLine serverInfo chanInfo.name line )
+
+                ( rawLine, nextMsg ) =
+                    case ( String.left 1 line, String.words line ) of
+                        ( "/", cmd :: params ) ->
+                            slashCommand cmd params
+
+                        _ ->
+                            privmsg chanInfo.name line
 
                 model_ =
                     { model | inputLine = "" }
@@ -445,7 +467,7 @@ handleCommand serverInfo msg date model =
                 model_ =
                     model.serverInfo
                         |> Dict.insert serverInfo.name serverInfo_
-                        |> \x -> { model | serverInfo = x }
+                        |> \info -> { model | serverInfo = info }
             in
                 ( model_, Cmd.none )
 
@@ -480,8 +502,30 @@ handleCommand serverInfo msg date model =
 
         ( "NOTICE", [ target, message ] ) ->
             let
+                formatCtcp msg =
+                    case String.words msg of
+                        [ "PING", timeString ] ->
+                            let
+                                time =
+                                    timeString
+                                        |> String.toFloat
+                                        |> Result.withDefault 0
+
+                                pingTime =
+                                    (model.currentTime - time)
+                                        |> Time.inSeconds
+                                        |> toString
+                            in
+                                "PONG: " ++ pingTime ++ " secs"
+
+                        _ ->
+                            "CTCP:" ++ msg
+
                 notice =
-                    "NOTICE: " ++ message
+                    if String.startsWith "\x01" message then
+                        formatCtcp (String.split "\x01" message |> String.concat)
+                    else
+                        "NOTICE: " ++ message
             in
                 handleMessage serverInfo msg.user target notice date model
 

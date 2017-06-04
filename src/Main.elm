@@ -31,16 +31,16 @@ subscriptions model =
         -- Establish all of our open websocket connections
         recvWs =
             model.serverInfo
-                |> Dict.toList
+                |> Dict.values
                 |> List.map
-                    (\( serverName, info ) ->
-                        WebSocket.listen info.socket
-                            (\n -> ReceiveRawLine serverName n)
+                    (\info ->
+                        WebSocket.listen info.socket (ReceiveRawLine info.name)
                     )
     in
         Sub.batch
-            ([ Ports.addSavedServer AddServer
-             , Time.every Time.second Tick
-             ]
-                ++ recvWs
+            (List.append
+                [ Ports.addSavedServer AddServer
+                , Time.every Time.second Tick
+                ]
+                recvWs
             )
