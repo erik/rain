@@ -167,10 +167,13 @@ update msg model =
                             ( String.join " " [ "JOIN", channel ], Noop )
 
                         ( "/part", [] ) ->
-                            ( "part " ++ chanInfo.name, Noop )
+                            slashCommand "/part" [ chanInfo.name ]
 
                         ( "/part", [ channel ] ) ->
-                            ( String.join " " [ "PART", channel ], Noop )
+                            ( "PART " ++ channel, CloseChannel serverInfo channel )
+
+                        ( "/close", [] ) ->
+                            ( "", CloseChannel serverInfo chanInfo.name )
 
                         ( "/me", rest ) ->
                             let
@@ -195,11 +198,7 @@ update msg model =
                             privmsg "ChanServ" (String.join " " rest)
 
                         ( "/quote", rest ) ->
-                            let
-                                msg =
-                                    String.join " " rest
-                            in
-                                ( msg, Noop )
+                            ( String.join " " rest, Noop )
 
                         _ ->
                             let
