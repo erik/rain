@@ -15,7 +15,7 @@ import WebSocket
 type Msg
     = AddServer ServerMetaData
     | AddLine ServerInfo ChannelName Line
-    | CloseChannel ServerName ChannelName
+    | CloseChannel ServerInfo ChannelName
     | ConnectIrc ServerInfo
     | CreateChannel ServerInfo ChannelName
     | FormMsg Form.Msg
@@ -393,9 +393,24 @@ update msg model =
             in
                 ( { model | newServerForm = Just form }, Cmd.none )
 
-        CloseChannel serverName channelName ->
-            -- TODO: implement me.
-            ( model, Cmd.none )
+        CloseChannel serverInfo channelName ->
+            let
+                current =
+                    if model.current == Just ( serverInfo.name, channelName ) then
+                        Nothing
+                    else
+                        model.current
+
+                serverInfo_ =
+                    { serverInfo | channels = Dict.remove channelName serverInfo.channels }
+
+                model_ =
+                    { model
+                        | current = current
+                        , serverInfo = Dict.insert serverInfo.name serverInfo_ model.serverInfo
+                    }
+            in
+                ( model_, Cmd.none )
 
         Noop ->
             ( model, Cmd.none )
