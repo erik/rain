@@ -8,6 +8,7 @@ import Irc
 import Model exposing (..)
 import Ports
 import Regex
+import Set exposing (Set)
 import Time exposing (Time)
 import WebSocket
 
@@ -328,9 +329,8 @@ update msg model =
                         |> Maybe.map
                             (\w ->
                                 channelInfo.users
-                                    |> Dict.values
-                                    |> List.filter (\u -> String.startsWith w u.nick)
-                                    |> List.map (.nick)
+                                    |> Set.filter (String.startsWith w)
+                                    |> Set.toList
                             )
 
                 longestCompletion =
@@ -505,10 +505,10 @@ handleCommand serverInfo msg date model =
             let
                 chanInfo =
                     getChannel serverInfo channel
-                        |> Maybe.withDefault Model.newChannel channel
+                        |> Maybe.withDefault (Model.newChannel channel)
 
                 chanInfo_ =
-                    { chanInfo | users = Dict.insert msg.user.nick msg.user chanInfo.users }
+                    { chanInfo | users = Set.insert msg.user.nick chanInfo.users }
 
                 model_ =
                     setChannel serverInfo chanInfo_ model
@@ -579,23 +579,20 @@ handleCommand serverInfo msg date model =
                 specialChars =
                     Regex.regex "[%@~\\+]+"
 
-                mkUserInfo nickStr =
-                    nickStr
-                        |> Regex.replace Regex.All specialChars (\_ -> "")
-                        |> \nick -> { isServer = False, nick = nick, host = "", real = "" }
+                stripSpecial =
+                    Regex.replace Regex.All specialChars (always "")
 
                 chanInfo =
                     getOrCreateChannel serverInfo channel
 
-                userDict =
+                userSet =
                     String.words usersString
-                        |> List.map mkUserInfo
-                        |> List.map (\u -> ( u.nick, u ))
-                        |> Dict.fromList
-                        |> Dict.union chanInfo.users
+                        |> List.map stripSpecial
+                        |> Set.fromList
+                        |> Set.union chanInfo.users
 
                 chanInfo_ =
-                    { chanInfo | users = userDict }
+                    { chanInfo | users = userSet }
 
                 model_ =
                     setChannel serverInfo chanInfo_ model

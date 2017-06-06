@@ -5,6 +5,7 @@ import Dict as D
 import Dict exposing (Dict)
 import Form exposing (Form)
 import Form.Validate as Validate exposing (..)
+import Set exposing (Set)
 import Time exposing (Time)
 
 
@@ -77,7 +78,7 @@ type alias UserInfo =
 
 type alias ChannelInfo =
     { name : String
-    , users : Dict String UserInfo
+    , users : Set String
     , topic : Maybe String
     , buffer : Buffer
     , lastChecked : Time.Time
@@ -119,7 +120,7 @@ initialModel =
 newChannel : String -> ChannelInfo
 newChannel name =
     { name = name
-    , users = Dict.empty
+    , users = Set.empty
     , topic = Nothing
     , buffer = []
     , lastChecked = 0
@@ -141,11 +142,11 @@ setChannel serverInfo chan model =
             else
                 let
                     channels =
-                        D.insert (String.toLower chan.name) chan serverInfo.channels
+                        Dict.insert (String.toLower chan.name) chan serverInfo.channels
                 in
                     { serverInfo | channels = channels }
     in
-        { model | servers = D.insert serverInfo.name serverInfo_ model.servers }
+        { model | servers = Dict.insert serverInfo.name serverInfo_ model.servers }
 
 
 getChannel : ServerInfo -> ChannelName -> Maybe ChannelInfo
@@ -153,7 +154,7 @@ getChannel serverInfo channelName =
     if channelName == serverBufferName then
         Just serverInfo.networkChannel
     else
-        D.get (String.toLower channelName) serverInfo.channels
+        Dict.get (String.toLower channelName) serverInfo.channels
 
 
 getServerChannel : Model -> ServerChannel -> Maybe ( ServerInfo, ChannelInfo )
