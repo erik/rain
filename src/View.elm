@@ -27,6 +27,7 @@ view model =
                     viewChannel model server channel
 
                 _ ->
+                    -- TODO: should put some help text here or something.
                     div [] [ text "nothing." ]
     in
         div [ id "container" ] [ viewChannelList model, chatView ]
@@ -48,14 +49,11 @@ viewForm form =
         inputsHtml =
             inputs
                 |> List.map
-                    (\( input, label, fieldName, example ) ->
-                        ( input, label, Form.getFieldAsString fieldName form, example )
-                    )
-                |> List.map
-                    (\( input, lbl, field, ex ) ->
+                    (\( input, lbl, fieldName, ex ) ->
                         div [ class "form-row" ]
                             [ label [] [ text lbl ]
-                            , input field [ placeholder ex ]
+                            , input (Form.getFieldAsString fieldName form)
+                                [ placeholder ex ]
                             ]
                     )
     in
@@ -77,8 +75,7 @@ hasUnread chan =
             chan.buffer
                 |> List.head
                 |> Maybe.andThen (\grp -> List.head grp.messages)
-                |> Maybe.map (\msg -> msg.ts)
-                |> Maybe.map Date.toTime
+                |> Maybe.map (.ts >> Date.toTime)
                 |> Maybe.withDefault chan.lastChecked
     in
         chan.lastChecked < lastMessageTs
@@ -109,10 +106,13 @@ viewChannelList model =
                 |> Dict.toList
                 |> List.map
                     (\( serverName, serverInfo ) ->
-                        li [ class "clickable" ]
-                            [ span [ onClick (SelectChannel serverInfo serverBufferName) ]
-                                [ text serverName ]
-                            , ul [] (channelList serverInfo)
+                        div []
+                            [ hr [] []
+                            , li [ class "clickable" ]
+                                [ span [ onClick (SelectChannel serverInfo serverBufferName) ]
+                                    [ text serverName ]
+                                , ul [] (channelList serverInfo)
+                                ]
                             ]
                     )
 
