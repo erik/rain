@@ -268,5 +268,5 @@ formatLine serverInfo line =
             ]
             (split
                 |> List.map linkify
-                |> List.intersperse (text " ")
+                |> List.intersperse (span [] [ text " " ])
             )
