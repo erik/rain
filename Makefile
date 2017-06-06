@@ -1,7 +1,12 @@
+ELM_FLAGS ?= --warn
+
 all: build
 
+debug: ELM_FLAGS += --debug
+debug: clean build
+
 build:
-	elm-make src/Main.elm --output main.js --warn
+	elm-make src/Main.elm --output main.js $(ELM_FLAGS)
 
 clean:
 	rm -r elm-stuff/build-artifacts/*/user/
