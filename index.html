@@ -57,11 +57,23 @@
      setTimeout(notif.close.bind(notif), 5000)
  })
 
- app.ports.saveServer.subscribe(metadata => {
+ app.ports.modifyServerStore.subscribe(args => {
+     let [metadata, action] = args
+
      let servers = JSON.parse(window.localStorage.savedServers)
-     servers[metadata.name] = metadata
+
+     if (action === 'STORE') {
+         servers[metadata.name] = metadata
+     } else if (action === 'REMOVE') {
+         delete servers[metadata.name]
+     } else {
+         console.error('bad action', action)
+     }
+
      window.localStorage.savedServers = JSON.stringify(servers)
  })
+
+
 
  // push saved server configuration
  if (window.localStorage.savedServers) {

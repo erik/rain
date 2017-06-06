@@ -12,6 +12,11 @@ import Time exposing (Time)
 import WebSocket
 
 
+type StoreServerAction
+    = StoreServer
+    | RemoveServer
+
+
 type Msg
     = AddServer ServerMetaData
     | AddLine ServerInfo ChannelName Line
@@ -21,7 +26,6 @@ type Msg
     | FormMsg Form.Msg
     | ReceiveRawLine ServerName String
     | RefreshScroll Bool
-    | SaveServer ServerInfo
     | SelectChannel ServerInfo ChannelName
     | SendLine ServerInfo ChannelInfo String
     | SendNotification String String
@@ -30,6 +34,7 @@ type Msg
     | TabCompleteLine ServerInfo ChannelInfo
     | Tick Time
     | TypeLine String
+    | UpdateServerStore ServerInfo StoreServerAction
     | Noop
 
 
@@ -78,9 +83,6 @@ update msg model =
                         |> Dict.insert meta.name info
             in
                 ( { model | servers = servers_ }, Cmd.none )
-
-        SaveServer serverInfo ->
-            model ! [ Ports.saveServer serverInfo.meta ]
 
         ConnectIrc server ->
             let
@@ -196,6 +198,12 @@ update msg model =
 
                         ( "/cs", rest ) ->
                             privmsg "ChanServ" (String.join " " rest)
+
+                        ( "/server", [ "save" ] ) ->
+                            ( "", UpdateServerStore serverInfo StoreServer )
+
+                        ( "/server", [ "delete" ] ) ->
+                            ( "", UpdateServerStore serverInfo RemoveServer )
 
                         ( "/quote", rest ) ->
                             ( String.join " " rest, Noop )
@@ -410,6 +418,18 @@ update msg model =
                     }
             in
                 ( model_, Cmd.none )
+
+        UpdateServerStore serverInfo action ->
+            let
+                actionStr =
+                    case action of
+                        StoreServer ->
+                            "STORE"
+
+                        RemoveServer ->
+                            "REMOVE"
+            in
+                ( model, Ports.modifyServerStore ( serverInfo.meta, actionStr ) )
 
         Noop ->
             ( model, Cmd.none )

@@ -13,7 +13,7 @@ port addSavedServer : (ServerMetaData -> msg) -> Sub msg
 -- Output ports
 
 
-port saveServer : ServerMetaData -> Cmd msg
+port modifyServerStore : ( ServerMetaData, String ) -> Cmd msg
 
 
 port sendNotification : ( String, String ) -> Cmd msg
