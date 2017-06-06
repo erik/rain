@@ -180,7 +180,14 @@ onInputKey model server channel =
 
 viewTopic : ChannelInfo -> Html Msg
 viewTopic channel =
-    div [ id "buffer-topic" ] [ text <| Maybe.withDefault "" channel.topic ]
+    let
+        topic =
+            Maybe.withDefault "" channel.topic
+
+        words =
+            String.split " " topic
+    in
+        div [ id "buffer-topic" ] (linkifyLine words)
 
 
 viewBuffer : ServerInfo -> ChannelInfo -> Html Msg
@@ -226,6 +233,19 @@ viewLineGroup serverInfo group =
             ]
 
 
+linkifyLine words =
+    let
+        linkify word =
+            if String.contains "://" word then
+                a [ href word, target "_blank" ] [ text word ]
+            else
+                text word
+    in
+        words
+            |> List.map linkify
+            |> List.intersperse (span [] [ text " " ])
+
+
 formatLine : ServerInfo -> Line -> Html Msg
 formatLine serverInfo line =
     let
@@ -252,12 +272,6 @@ formatLine serverInfo line =
         matchesNick =
             line.message
                 |> Regex.contains (regex ("\\b" ++ serverInfo.nick ++ "\\b"))
-
-        linkify word =
-            if String.contains "://" word then
-                a [ href word, target "_blank" ] [ text word ]
-            else
-                text word
     in
         div
             [ title timeStr
@@ -266,7 +280,4 @@ formatLine serverInfo line =
                 , ( "action", isAction )
                 ]
             ]
-            (split
-                |> List.map linkify
-                |> List.intersperse (span [] [ text " " ])
-            )
+            (linkifyLine split)
