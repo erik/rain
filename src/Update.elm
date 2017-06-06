@@ -580,7 +580,7 @@ handleCommand serverInfo msg date model =
                     Regex.regex "[%@~\\+]"
 
                 stripSpecial =
-                    Regex.replace Regex.All specialChars (always "")
+                    Regex.replace Regex.All specialChars (\_ -> "")
 
                 chanInfo =
                     getOrCreateChannel serverInfo channel
