@@ -577,7 +577,7 @@ handleCommand serverInfo msg date model =
         ( "353", [ _, _, channel, usersString ] ) ->
             let
                 specialChars =
-                    Regex.regex "[%@~\\+]+"
+                    Regex.regex "[%@~\\+]"
 
                 stripSpecial =
                     Regex.replace Regex.All specialChars (always "")
@@ -586,8 +586,8 @@ handleCommand serverInfo msg date model =
                     getOrCreateChannel serverInfo channel
 
                 userSet =
-                    String.words usersString
-                        |> List.map stripSpecial
+                    stripSpecial usersString
+                        |> String.words
                         |> Set.fromList
                         |> Set.union chanInfo.users
 
