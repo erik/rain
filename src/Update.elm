@@ -523,6 +523,43 @@ handleCommand serverInfo msg date model =
             in
                 ( { model_ | current = current_ }, Cmd.none )
 
+        ( "PART", channel :: reason ) ->
+            case getChannel serverInfo channel of
+                Just chanInfo ->
+                    let
+                        chanInfo_ =
+                            { chanInfo | users = Set.remove msg.user.nick chanInfo.users }
+
+                        model_ =
+                            setChannel serverInfo chanInfo_ model
+
+                        ( current, cmd ) =
+                            if serverInfo.nick == msg.user.nick then
+                                ( Nothing, CloseChannel serverInfo channel )
+                            else
+                                ( model.current, Noop )
+                    in
+                        update cmd { model_ | current = current }
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "odd: PART for channel we aren't in." channel
+                    in
+                        ( model, Cmd.none )
+
+        ( "QUIT", _ ) ->
+            let
+                serverInfo_ =
+                    serverInfo.channels
+                        |> Dict.map (\_ ch -> { ch | users = Set.remove msg.user.nick ch.users })
+                        |> \channels -> { serverInfo | channels = channels }
+
+                model_ =
+                    { model | servers = Dict.insert serverInfo.name serverInfo model.servers }
+            in
+                ( model_, Cmd.none )
+
         ( "PRIVMSG", [ target, message ] ) ->
             handleMessage serverInfo msg.user target message date model
 
