@@ -503,10 +503,9 @@ handleCommand serverInfo msg date model =
 
         ( "JOIN", [ channel ] ) ->
             let
-                ( chanInfo, isNew ) =
+                chanInfo =
                     getChannel serverInfo channel
-                        |> Maybe.map (\chan -> ( chan, False ))
-                        |> Maybe.withDefault ( Model.newChannel channel, True )
+                        |> Maybe.withDefault Model.newChannel channel
 
                 chanInfo_ =
                     { chanInfo | users = Dict.insert msg.user.nick msg.user chanInfo.users }
@@ -515,9 +514,9 @@ handleCommand serverInfo msg date model =
                     setChannel serverInfo chanInfo_ model
 
                 current_ =
-                    -- We want to switch to the channel if we joined and it
-                    -- hasn't been seen before.
-                    if serverInfo.nick == msg.user.nick && isNew then
+                    -- We want to switch to the channel if we haven't
+                    -- joined anything else yet.
+                    if serverInfo.nick == msg.user.nick && model.current == Nothing then
                         Just ( serverInfo.name, channel )
                     else
                         model.current
