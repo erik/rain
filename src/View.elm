@@ -247,7 +247,7 @@ formatLine serverInfo line =
                     ( line.message, False )
 
         split =
-            Regex.split All (regex "(\\s+)") message
+            String.split " " message
 
         matchesNick =
             line.message
@@ -266,4 +266,7 @@ formatLine serverInfo line =
                 , ( "action", isAction )
                 ]
             ]
-            (List.map linkify split)
+            (split
+                |> List.map linkify
+                |> List.intersperse (text " ")
+            )
