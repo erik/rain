@@ -233,6 +233,7 @@ viewLineGroup serverInfo group =
             ]
 
 
+linkifyLine : List String -> List (Html msg)
 linkifyLine words =
     let
         linkify word =
