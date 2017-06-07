@@ -27,10 +27,55 @@ view model =
                     viewChannel model server channel
 
                 _ ->
-                    -- TODO: should put some help text here or something.
-                    div [] [ text "nothing." ]
+                    viewHelpText
     in
         div [ id "container" ] [ viewChannelList model, chatView ]
+
+
+viewHelpText : Html msg
+viewHelpText =
+    let
+        commands =
+            [ ( "/server save", "save the configuration for the current server to localstorage" )
+            , ( "/server delete", "remove the current configuration from localstorage" )
+            , ( "/join #channel", "join and switch to #channel" )
+            , ( "/part", "leave the current channel" )
+            , ( "/part #channel", "leave #channel" )
+            , ( "/close", "close the current buffer window" )
+            , ( "/ping nick", "send CTCP PING to nick" )
+            , ( "/ns", "shorthand to message NickServ" )
+            , ( "/cs", "shorthand to message ChanServ" )
+            , ( "/quote something", "send \"something\" to the server directly" )
+            ]
+                |> List.map
+                    (\( cmd, desc ) ->
+                        li []
+                            [ div [ class "command-name" ] [ text cmd ]
+                            , div [ class "command-desc" ] [ text desc ]
+                            ]
+                    )
+                |> ul []
+
+        setupSteps =
+            [ "start websocket proxy"
+            , "configure irc connection through 'add server' dialog"
+            , """if everything connects correctly, '/server save' to
+                 persist the server config to localStorage"""
+            , "☔ "
+            ]
+                |> List.map (linkifyLine >> (li []))
+                |> ol []
+    in
+        div [ id "buffer-view" ]
+            [ h1 [] [ text "rain" ]
+            , p [] [ text """Minimal browser based IRC client connecting
+                       over a websocket proxy backend.""" ]
+            , p [] (linkifyLine "source: https://github.com/erik/rain")
+            , h2 [] [ text "01 setup" ]
+            , setupSteps
+            , h2 [] [ text "02 supported commands" ]
+            , commands
+            ]
 
 
 viewForm : Form () ServerMetaData -> Html Form.Msg
@@ -183,11 +228,8 @@ viewTopic channel =
     let
         topic =
             Maybe.withDefault "" channel.topic
-
-        words =
-            String.split " " topic
     in
-        div [ id "buffer-topic" ] (linkifyLine words)
+        div [ id "buffer-topic" ] (linkifyLine topic)
 
 
 viewBuffer : ServerInfo -> ChannelInfo -> Html Msg
@@ -233,9 +275,12 @@ viewLineGroup serverInfo group =
             ]
 
 
-linkifyLine : List String -> List (Html msg)
-linkifyLine words =
+linkifyLine : String -> List (Html msg)
+linkifyLine line =
     let
+        words =
+            String.split " " line
+
         linkify word =
             if String.contains "://" word then
                 a [ href word, target "_blank" ] [ text word ]
@@ -267,9 +312,6 @@ formatLine serverInfo line =
                 _ ->
                     ( line.message, False )
 
-        split =
-            String.split " " message
-
         matchesNick =
             line.message
                 |> Regex.contains (regex ("\\b" ++ serverInfo.nick ++ "\\b"))
@@ -281,4 +323,4 @@ formatLine serverInfo line =
                 , ( "action", isAction )
                 ]
             ]
-            (linkifyLine split)
+            (linkifyLine message)

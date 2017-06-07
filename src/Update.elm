@@ -167,7 +167,9 @@ update msg model =
                 slashCommand cmd params =
                     case ( String.toLower cmd, params ) of
                         ( "/join", [ channel ] ) ->
-                            ( String.join " " [ "JOIN", channel ], Noop )
+                            ( String.join " " [ "JOIN", channel ]
+                            , SelectChannel serverInfo channel
+                            )
 
                         ( "/part", [] ) ->
                             slashCommand "/part" [ chanInfo.name ]
