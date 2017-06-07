@@ -315,6 +315,12 @@ formatLine serverInfo line =
         matchesNick =
             line.message
                 |> Regex.contains (regex ("\\b" ++ serverInfo.nick ++ "\\b"))
+
+        copyText =
+            span [ class "copy-text" ] [ text ("<" ++ line.nick ++ "> ") ]
+
+        linkified =
+            linkifyLine message
     in
         div
             [ title timeStr
@@ -323,4 +329,4 @@ formatLine serverInfo line =
                 , ( "action", isAction )
                 ]
             ]
-            (linkifyLine message)
+            (copyText :: linkified)

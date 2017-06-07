@@ -55,6 +55,11 @@ h1 {
     color: #a0a0a0;
 }
 
+.copy-text {
+    font-size: 0;
+    color: rgba(0,0,0,0);
+}
+
 .group-messages {
     border: rgba(0,0,0,.05) solid;
     border-width: 0 0 0 .5ch;
