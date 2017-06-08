@@ -436,7 +436,7 @@ update msg model =
                         model.current
 
                 serverInfo_ =
-                    { serverInfo | channels = Dict.remove channelName serverInfo.channels }
+                    { serverInfo | channels = Dict.remove (String.toLower channelName) serverInfo.channels }
 
                 model_ =
                     { model
@@ -444,7 +444,7 @@ update msg model =
                         , servers = Dict.insert serverInfo.name serverInfo_ model.servers
                     }
             in
-                ( model_, Cmd.none )
+                model_ ! []
 
         UpdateServerStore serverInfo action ->
             let
