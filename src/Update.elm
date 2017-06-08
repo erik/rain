@@ -146,16 +146,15 @@ update msg model =
                             , message = msg
                             }
 
-                        nextMsg =
-                            AddLine serverInfo target line
-
                         rawLine =
                             String.join " " [ "PRIVMSG", target, ":" ++ msg ]
                     in
                         if chanInfo.isServer then
-                            ( msg, AddLine serverInfo serverBufferName line )
+                            [ AddLine serverInfo serverBufferName line ]
                         else
-                            ( rawLine, nextMsg )
+                            [ SendRawLine serverInfo rawLine
+                            , AddLine serverInfo target line
+                            ]
 
                 ctcp target command msg =
                     let
@@ -182,13 +181,15 @@ update msg model =
                             , message = msg
                             }
                     in
-                        ( "", AddLine serverInfo chanInfo.name line )
+                        [ AddLine serverInfo chanInfo.name line ]
 
                 slashCommand cmd params =
                     case ( String.toLower cmd, params ) of
                         ( "/join", [ channel ] ) ->
                             if String.startsWith "#" channel then
-                                ( "JOIN " ++ channel, SelectChannel serverInfo channel )
+                                [ SendRawLine serverInfo ("JOIN " ++ channel)
+                                , SelectChannel serverInfo channel
+                                ]
                             else
                                 addErrorMessage "channel names must begin with #"
 
@@ -196,16 +197,18 @@ update msg model =
                             if String.startsWith "#" nick then
                                 addErrorMessage "can only initiate queries with users"
                             else
-                                ( "", SelectChannel serverInfo nick )
+                                [ SelectChannel serverInfo nick ]
 
                         ( "/part", [] ) ->
                             slashCommand "/part" [ chanInfo.name ]
 
                         ( "/part", [ channel ] ) ->
-                            ( "PART " ++ channel, CloseChannel serverInfo channel )
+                            [ SendRawLine serverInfo ("PART " ++ channel)
+                            , CloseChannel serverInfo channel
+                            ]
 
                         ( "/close", [] ) ->
-                            ( "", CloseChannel serverInfo chanInfo.name )
+                            [ CloseChannel serverInfo chanInfo.name ]
 
                         ( "/me", rest ) ->
                             let
@@ -227,18 +230,18 @@ update msg model =
                             privmsg "ChanServ" (String.join " " rest)
 
                         ( "/server", [ "save" ] ) ->
-                            ( "", UpdateServerStore serverInfo StoreServer )
+                            [ UpdateServerStore serverInfo StoreServer ]
 
                         ( "/server", [ "delete" ] ) ->
-                            ( "", UpdateServerStore serverInfo RemoveServer )
+                            [ UpdateServerStore serverInfo RemoveServer ]
 
                         ( "/quote", rest ) ->
-                            ( String.join " " rest, Noop )
+                            [ SendRawLine serverInfo (String.join " " rest) ]
 
                         _ ->
                             addErrorMessage "unknown command, did you forget to /quote?"
 
-                ( rawLine, nextMsg ) =
+                messages =
                     case ( String.left 1 line, String.words line ) of
                         ( "/", cmd :: params ) ->
                             slashCommand (commandAlias cmd) params
@@ -252,8 +255,8 @@ update msg model =
                 if model.inputLine == "" then
                     ( model, Cmd.none )
                 else
-                    update (SendRawLine serverInfo rawLine) model_
-                        |> andThen nextMsg
+                    model_
+                        |> batchMessage messages
                         |> andThen (RefreshScroll True)
 
         TypeLine str ->
@@ -463,6 +466,11 @@ andThen msg ( model, cmd ) =
             update msg model
     in
         newModel ! [ cmd, newCmd ]
+
+
+batchMessage : List Msg -> Model -> ( Model, Cmd Msg )
+batchMessage msgs model =
+    List.foldl (andThen) ( model, Cmd.none ) msgs
 
 
 handleMessage : ServerInfo -> UserInfo -> String -> String -> Date -> Model -> ( Model, Cmd Msg )
