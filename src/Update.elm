@@ -1,6 +1,5 @@
 module Update exposing (Msg(..), update)
 
-import Date exposing (Date)
 import Debug
 import Dict
 import Form exposing (Form)
@@ -145,7 +144,7 @@ update msg model =
                 privmsg target msg =
                     let
                         line =
-                            { ts = Date.fromTime model.currentTime
+                            { ts = model.currentTime
                             , nick = serverInfo.nick
                             , message = msg
                             }
@@ -181,7 +180,7 @@ update msg model =
                 addErrorMessage msg =
                     let
                         line =
-                            { ts = Date.fromTime model.currentTime
+                            { ts = model.currentTime
                             , nick = "*error"
                             , message = msg
                             }
@@ -281,7 +280,7 @@ update msg model =
                         ts =
                             msg
                                 |> Maybe.andThen .time
-                                |> Maybe.withDefault (Date.fromTime model.currentTime)
+                                |> Maybe.withDefault model.currentTime
                     in
                         if line == "AUTHENTICATE" then
                             update (ConnectIrc serverInfo)
@@ -478,7 +477,7 @@ batchMessage msgs model =
     List.foldl (andThen) ( model, Cmd.none ) msgs
 
 
-handleMessage : ServerInfo -> UserInfo -> String -> String -> Date -> Model -> ( Model, Cmd Msg )
+handleMessage : ServerInfo -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
 handleMessage serverInfo user target message ts model =
     let
         target_ =
@@ -509,8 +508,8 @@ handleMessage serverInfo user target message ts model =
             |> andThen refreshMsg
 
 
-handleCommand : ServerInfo -> Date -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
-handleCommand serverInfo date msg model =
+handleCommand : ServerInfo -> Time.Time -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
+handleCommand serverInfo ts msg model =
     case ( msg.command, msg.params ) of
         -- Clean out the buffers when we rejoin.
         -- TODO: this should be conditional on whether or not this is a bouncer.
@@ -597,7 +596,7 @@ handleCommand serverInfo date msg model =
                 ( model_, Cmd.none )
 
         ( "PRIVMSG", [ target, message ] ) ->
-            handleMessage serverInfo msg.user target message date model
+            handleMessage serverInfo msg.user target message ts model
 
         ( "NOTICE", [ target, message ] ) ->
             let
@@ -626,7 +625,7 @@ handleCommand serverInfo date msg model =
                     else
                         "NOTICE: " ++ message
             in
-                handleMessage serverInfo msg.user target notice date model
+                handleMessage serverInfo msg.user target notice ts model
 
         -- You have been marked as being away
         ( "306", _ ) ->
@@ -695,7 +694,7 @@ handleCommand serverInfo date msg model =
                     String.join " " msg.params
 
                 newLine =
-                    { ts = date
+                    { ts = ts
                     , nick = msg.user.nick
                     , message = String.join ": " [ msg.command, msgText ]
                     }

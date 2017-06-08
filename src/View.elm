@@ -120,7 +120,7 @@ hasUnread chan =
             chan.buffer
                 |> List.head
                 |> Maybe.andThen (\grp -> List.head grp.messages)
-                |> Maybe.map (.ts >> Date.toTime)
+                |> Maybe.map .ts
                 |> Maybe.withDefault chan.lastChecked
     in
         chan.lastChecked < lastMessageTs
@@ -246,7 +246,9 @@ viewLineGroup : ServerInfo -> LineGroup -> Html Msg
 viewLineGroup serverInfo group =
     let
         timeStr =
-            Date.format "%H:%M:%S" group.ts
+            group.ts
+                |> Date.fromTime
+                |> Date.format "%H:%M:%S"
 
         groupHead =
             div [ class "group-head" ]
@@ -296,7 +298,9 @@ formatLine : ServerInfo -> Line -> Html Msg
 formatLine serverInfo line =
     let
         timeStr =
-            Date.format "%Y-%m-%d %H:%M:%S" line.ts
+            line.ts
+                |> Date.fromTime
+                |> Date.format "%Y-%m-%d %H:%M:%S"
 
         ( message, isAction ) =
             case String.split ("\x01" ++ "ACTION") line.message of

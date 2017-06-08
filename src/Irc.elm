@@ -3,25 +3,27 @@ module Irc exposing (..)
 import Date
 import Model
 import Regex exposing (HowMany(All))
+import Time
 
 
 type alias ParsedMessage =
     { raw : String
-    , time : Maybe Date.Date
+    , time : Maybe Time.Time
     , user : Model.UserInfo
     , command : String
     , params : List String
     }
 
 
-parseTimeTag : String -> Maybe Date.Date
+parseTimeTag : String -> Maybe Time.Time
 parseTimeTag tags =
     tags
         |> String.split ";"
         |> List.filter (String.startsWith "time=")
         |> List.map (String.dropLeft 5)
         |> List.head
-        |> Maybe.andThen (Result.toMaybe << Date.fromString)
+        |> Maybe.andThen (Date.fromString >> Result.toMaybe)
+        |> Maybe.map Date.toTime
 
 
 parsePrefix : String -> Model.UserInfo

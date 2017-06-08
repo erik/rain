@@ -1,12 +1,15 @@
 port module Ports exposing (..)
 
-import Model exposing (ServerMetaData)
+import Model exposing (ServerMetaData, ServerName, Line)
 
 
 -- Input ports
 
 
 port addSavedServer : (ServerMetaData -> msg) -> Sub msg
+
+
+port addScrollback : (( ServerName, Line ) -> msg) -> Sub msg
 
 
 

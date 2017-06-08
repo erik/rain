@@ -1,7 +1,5 @@
 module Model exposing (..)
 
-import Date exposing (Date)
-import Dict as D
 import Dict exposing (Dict)
 import Form exposing (Form)
 import Form.Validate as Validate exposing (..)
@@ -51,14 +49,14 @@ type alias ServerInfo =
 
 
 type alias Line =
-    { ts : Date.Date
+    { ts : Time.Time
     , nick : String
     , message : String
     }
 
 
 type alias LineGroup =
-    { ts : Date.Date
+    { ts : Time.Time
     , nick : String
     , messages : List Line
     }
