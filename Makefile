@@ -18,7 +18,7 @@ server:
 	python3 -m http.server
 
 proxy:
-	cd wsproxy; yarn; node index.js
+	cd wsproxy; npm install; node index.js
 
 # Spin up everything
 dev:
