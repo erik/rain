@@ -164,12 +164,39 @@ update msg model =
                     in
                         privmsg target msg_
 
+                commandAlias cmd =
+                    Dict.fromList
+                        [ ( "/j", "/join" )
+                        , ( "/msg", "/privmsg" )
+                        , ( "/pm", "/privmsg" )
+                        , ( "/q", "/query" )
+                        ]
+                        |> Dict.get cmd
+                        |> Maybe.withDefault cmd
+
+                addErrorMessage msg =
+                    let
+                        line =
+                            { ts = Date.fromTime model.currentTime
+                            , nick = "*error"
+                            , message = msg
+                            }
+                    in
+                        ( "", AddLine serverInfo chanInfo.name line )
+
                 slashCommand cmd params =
                     case ( String.toLower cmd, params ) of
                         ( "/join", [ channel ] ) ->
-                            ( String.join " " [ "JOIN", channel ]
-                            , SelectChannel serverInfo channel
-                            )
+                            if String.startsWith "#" channel then
+                                ( "JOIN " ++ channel, SelectChannel serverInfo channel )
+                            else
+                                addErrorMessage "channel names must begin with #"
+
+                        ( "/query", [ nick ] ) ->
+                            if String.startsWith "#" nick then
+                                addErrorMessage "can only initiate queries with users"
+                            else
+                                ( "", SelectChannel serverInfo nick )
 
                         ( "/part", [] ) ->
                             slashCommand "/part" [ chanInfo.name ]
@@ -188,9 +215,6 @@ update msg model =
                                 ctcp chanInfo.name "ACTION" msg
 
                         ( "/privmsg", target :: rest ) ->
-                            privmsg target (String.join " " rest)
-
-                        ( "/msg", target :: rest ) ->
                             privmsg target (String.join " " rest)
 
                         ( "/ping", [ target ] ) ->
@@ -212,19 +236,12 @@ update msg model =
                             ( String.join " " rest, Noop )
 
                         _ ->
-                            let
-                                line =
-                                    { ts = Date.fromTime model.currentTime
-                                    , nick = "*error"
-                                    , message = "unknown command, did you forget to /quote?"
-                                    }
-                            in
-                                ( "", AddLine serverInfo chanInfo.name line )
+                            addErrorMessage "unknown command, did you forget to /quote?"
 
                 ( rawLine, nextMsg ) =
                     case ( String.left 1 line, String.words line ) of
                         ( "/", cmd :: params ) ->
-                            slashCommand cmd params
+                            slashCommand (commandAlias cmd) params
 
                         _ ->
                             privmsg chanInfo.name line
