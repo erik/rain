@@ -84,7 +84,7 @@ update msg model =
                     model.servers
                         |> Dict.insert meta.name info
             in
-                ( { model | servers = servers_ }, Cmd.none )
+                { model | servers = servers_ } ! []
 
         DisconnectServer serverInfo ->
             { model | servers = Dict.remove serverInfo.name model.servers } ! []
@@ -167,6 +167,7 @@ update msg model =
                     in
                         privmsg target msg_
 
+                -- shortened versions of common commands
                 commandAlias cmd =
                     Dict.fromList
                         [ ( "/j", "/join" )
@@ -257,14 +258,14 @@ update msg model =
                             privmsg chanInfo.name line
             in
                 if model.inputLine == "" then
-                    ( model, Cmd.none )
+                    model ! []
                 else
                     { model | inputLine = "" }
                         |> batchMessage messages
                         |> andThen (RefreshScroll True)
 
         TypeLine str ->
-            ( { model | inputLine = str }, Cmd.none )
+            { model | inputLine = str } ! []
 
         SendRawLine serverInfo line ->
             ( model, WebSocket.send serverInfo.socket line )
@@ -285,7 +286,8 @@ update msg model =
                         if line == "AUTHENTICATE" then
                             update (ConnectIrc serverInfo)
                         else
-                            Maybe.map (\msg -> handleCommand serverInfo msg ts) msg
+                            msg
+                                |> Maybe.map (handleCommand serverInfo ts)
                                 |> Maybe.withDefault (\model -> ( model, Cmd.none ))
             in
                 case getServer model serverName of
@@ -315,7 +317,7 @@ update msg model =
                 model_ =
                     setChannel serverInfo channel model
             in
-                ( model_, Cmd.none )
+                model_ ! []
 
         SelectChannel serverInfo channelName ->
             let
@@ -380,7 +382,7 @@ update msg model =
                             ( { model | inputLine = String.trimLeft newInput }, Cmd.none )
 
                     Nothing ->
-                        ( model, Cmd.none )
+                        model ! []
 
         Tick time ->
             let
@@ -411,20 +413,19 @@ update msg model =
 
                     _ ->
                         -- FIXME: gnarly.
-                        ( { model
+                        { model
                             | newServerForm =
                                 form_
                                     |> Maybe.map (Form.update newServerValidation formMsg)
-                          }
-                        , Cmd.none
-                        )
+                        }
+                            ! []
 
         ShowAddServerForm ->
             let
                 form =
                     Form.initial [] newServerValidation
             in
-                ( { model | newServerForm = Just form }, Cmd.none )
+                { model | newServerForm = Just form } ! []
 
         CloseChannel serverInfo channelName ->
             let
@@ -508,8 +509,8 @@ handleMessage serverInfo user target message ts model =
             |> andThen refreshMsg
 
 
-handleCommand : ServerInfo -> Irc.ParsedMessage -> Date -> Model -> ( Model, Cmd Msg )
-handleCommand serverInfo msg date model =
+handleCommand : ServerInfo -> Date -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
+handleCommand serverInfo date msg model =
     case ( msg.command, msg.params ) of
         -- Clean out the buffers when we rejoin.
         -- TODO: this should be conditional on whether or not this is a bouncer.
@@ -527,10 +528,14 @@ handleCommand serverInfo msg date model =
                         |> Dict.insert serverInfo.name serverInfo_
                         |> \info -> { model | servers = info }
             in
-                ( model_, Cmd.none )
+                model_ ! []
 
         ( "PING", params ) ->
-            update (SendRawLine serverInfo ("PONG " ++ (String.concat params))) model
+            let
+                pong =
+                    ("PONG " ++ (String.concat params))
+            in
+                update (SendRawLine serverInfo pong) model
 
         ( "JOIN", [ channel ] ) ->
             let
@@ -552,7 +557,7 @@ handleCommand serverInfo msg date model =
                     else
                         model.current
             in
-                ( { model_ | current = current_ }, Cmd.none )
+                { model_ | current = current_ } ! []
 
         ( "PART", channel :: reason ) ->
             case getChannel serverInfo channel of
@@ -625,7 +630,7 @@ handleCommand serverInfo msg date model =
 
         -- You have been marked as being away
         ( "306", _ ) ->
-            ( model, Cmd.none )
+            model ! []
 
         -- Channel topic
         ( "332", [ _, target, topic ] ) ->
@@ -639,7 +644,7 @@ handleCommand serverInfo msg date model =
                 ( setChannel serverInfo chanInfo_ model, Cmd.none )
 
         ( "333", _ ) ->
-            ( model, Cmd.none )
+            model ! []
 
         -- NAMES list
         ( "353", [ _, _, channel, usersString ] ) ->
@@ -665,11 +670,11 @@ handleCommand serverInfo msg date model =
                 model_ =
                     setChannel serverInfo chanInfo_ model
             in
-                ( model_, Cmd.none )
+                model_ ! []
 
         -- END of /NAMES
         ( "366", _ ) ->
-            ( model, Cmd.none )
+            model ! []
 
         ( "NICK", [ nick ] ) ->
             let
@@ -682,13 +687,12 @@ handleCommand serverInfo msg date model =
                 model_ =
                     { model | servers = Dict.insert serverInfo.name server_ model.servers }
             in
-                ( model_, Cmd.none )
+                model_ ! []
 
         _ ->
             let
                 msgText =
-                    msg.params
-                        |> String.join " "
+                    String.join " " msg.params
 
                 newLine =
                     { ts = date
@@ -696,11 +700,11 @@ handleCommand serverInfo msg date model =
                     , message = String.join ": " [ msg.command, msgText ]
                     }
 
-                newMsg =
-                    AddLine serverInfo serverBufferName newLine
-
                 _ =
                     Debug.log "unknown msg" msg
             in
-                update newMsg model
-                    |> andThen (RefreshScroll False)
+                model
+                    |> batchMessage
+                        [ AddLine serverInfo serverBufferName newLine
+                        , RefreshScroll False
+                        ]
