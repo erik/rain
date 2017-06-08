@@ -24,6 +24,7 @@ type Msg
     | CloseChannel ServerInfo ChannelName
     | ConnectIrc ServerInfo
     | CreateChannel ServerInfo ChannelName
+    | DisconnectServer ServerInfo
     | FormMsg Form.Msg
     | ReceiveRawLine ServerName String
     | RefreshScroll Bool
@@ -84,6 +85,9 @@ update msg model =
                         |> Dict.insert meta.name info
             in
                 ( { model | servers = servers_ }, Cmd.none )
+
+        DisconnectServer serverInfo ->
+            { model | servers = Dict.remove serverInfo.name model.servers } ! []
 
         ConnectIrc server ->
             let
@@ -235,6 +239,9 @@ update msg model =
                         ( "/server", [ "delete" ] ) ->
                             [ UpdateServerStore serverInfo RemoveServer ]
 
+                        ( "/server", [ "disconnect" ] ) ->
+                            [ DisconnectServer serverInfo ]
+
                         ( "/quote", rest ) ->
                             [ SendRawLine serverInfo (String.join " " rest) ]
 
@@ -248,14 +255,11 @@ update msg model =
 
                         _ ->
                             privmsg chanInfo.name line
-
-                model_ =
-                    { model | inputLine = "" }
             in
                 if model.inputLine == "" then
                     ( model, Cmd.none )
                 else
-                    model_
+                    { model | inputLine = "" }
                         |> batchMessage messages
                         |> andThen (RefreshScroll True)
 
