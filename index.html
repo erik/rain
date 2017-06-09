@@ -88,7 +88,6 @@
 
  })
 
-
  app.ports.saveScrollback.subscribe(args => {
      let [serverName, channelName, line] = args
 
@@ -104,6 +103,16 @@
      }
 
      channels[channelName] = chan
+     window.localStorage.setItem(`scrollback.${serverName}`, JSON.stringify(channels))
+ })
+
+ app.ports.clearScrollback.subscribe(args => {
+     let [serverName, channelName] = args
+     let item = window.localStorage.getItem(`scrollback.${serverName}`) || '{}'
+     let channels = JSON.parse(item)
+
+     delete channels[channelName]
+
      window.localStorage.setItem(`scrollback.${serverName}`, JSON.stringify(channels))
  })
 

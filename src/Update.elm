@@ -21,6 +21,7 @@ type Msg
     = AddServer ServerMetaData
     | AddScrollback ServerInfo ChannelName Line
     | AddLine ServerInfo ChannelName Line
+    | ClearChannel ServerInfo ChannelName
     | CloseChannel ServerInfo ChannelName
     | ConnectIrc ServerInfo
     | CreateChannel ServerInfo ChannelName
@@ -224,7 +225,12 @@ update msg model =
                             ]
 
                         ( "/close", [] ) ->
-                            [ CloseChannel serverInfo chanInfo.name ]
+                            [ ClearChannel serverInfo chanInfo.name
+                            , CloseChannel serverInfo chanInfo.name
+                            ]
+
+                        ( "/clear", [] ) ->
+                            [ ClearChannel serverInfo chanInfo.name ]
 
                         ( "/me", rest ) ->
                             let
@@ -437,6 +443,19 @@ update msg model =
                     Form.initial [] newServerValidation
             in
                 { model | newServerForm = Just form } ! []
+
+        ClearChannel serverInfo channelName ->
+            case getChannel serverInfo channelName of
+                Just channel ->
+                    let
+                        channel_ =
+                            { channel | buffer = [] }
+                    in
+                        (setChannel serverInfo channel_ model)
+                            ! [ Ports.clearScrollback ( serverInfo.name, channelName ) ]
+
+                Nothing ->
+                    Debug.crash "bad channel name given?" channelName
 
         CloseChannel serverInfo channelName ->
             let

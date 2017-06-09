@@ -19,6 +19,9 @@ port receiveScrollback : (( ServerName, ChannelName, Line ) -> msg) -> Sub msg
 port modifyServerStore : ( ServerMetaData, String ) -> Cmd msg
 
 
+port clearScrollback : ( ServerName, ChannelName ) -> Cmd msg
+
+
 port requestScrollback : ServerName -> Cmd msg
 
 
