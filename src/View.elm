@@ -35,18 +35,24 @@ view model =
 viewHelpText : Html msg
 viewHelpText =
     let
-        commands =
+        commandDesc =
             [ ( "/server save", "save the configuration for the current server to localstorage" )
             , ( "/server delete", "remove the current configuration from localstorage" )
+            , ( "/server disconnect", "close the IRC connection to the current server" )
             , ( "/join #channel", "join and switch to #channel" )
             , ( "/part", "leave the current channel" )
             , ( "/part #channel", "leave #channel" )
             , ( "/close", "close the current buffer window" )
+            , ( "/clear", "clear out the contents of the current buffer window" )
             , ( "/ping nick", "send CTCP PING to nick" )
             , ( "/ns", "shorthand to message NickServ" )
             , ( "/cs", "shorthand to message ChanServ" )
+            , ( "/query nick", "open a direct message buffer window with nick" )
             , ( "/quote something", "send \"something\" to the server directly" )
             ]
+
+        commands =
+            commandDesc
                 |> List.map
                     (\( cmd, desc ) ->
                         li []
