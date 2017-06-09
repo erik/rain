@@ -45,6 +45,7 @@ viewHelpText =
             , ( "/close", "close the current buffer window" )
             , ( "/clear", "clear out the contents of the current buffer window" )
             , ( "/ping nick", "send CTCP PING to nick" )
+            , ( "/names", "list the (first 100) users in the current channel" )
             , ( "/ns", "shorthand to message NickServ" )
             , ( "/cs", "shorthand to message ChanServ" )
             , ( "/query nick", "open a direct message buffer window with nick" )

@@ -251,6 +251,25 @@ update msg model =
                         ( "/cs", rest ) ->
                             privmsg "ChanServ" (String.join " " rest)
 
+                        ( "/names", [] ) ->
+                            let
+                                nicks =
+                                    chanInfo.users
+                                        |> Set.toList
+                                        |> List.take 100
+
+                                message =
+                                    [ Set.size chanInfo.users |> toString, "users:" ]
+                                        ++ nicks
+
+                                line =
+                                    { ts = model.currentTime
+                                    , message = String.join " " message
+                                    , nick = chanInfo.name
+                                    }
+                            in
+                                [ AddLine serverInfo chanInfo.name line ]
+
                         ( "/server", [ "save" ] ) ->
                             [ UpdateServerStore serverInfo StoreServer ]
 
