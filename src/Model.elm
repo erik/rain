@@ -34,6 +34,7 @@ type alias ServerMetaData =
     , nick : String
     , pass : String
     , name : String
+    , saveScrollback : Bool
     }
 
 
@@ -95,7 +96,7 @@ type alias Model =
 
 newServerValidation : Validation () ServerMetaData
 newServerValidation =
-    map7 ServerMetaData
+    map8 ServerMetaData
         (field "proxyHost" string)
         (field "proxyPass" string)
         (field "server" string)
@@ -103,6 +104,7 @@ newServerValidation =
         (field "nick" string)
         (field "pass" string)
         (field "name" string)
+        (field "saveScrollback" bool)
 
 
 initialModel : Model

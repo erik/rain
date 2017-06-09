@@ -29,7 +29,7 @@
 
      const padding = 50
      if (!messageBuffer || messageBuffer.scrollTop + messageBuffer.clientHeight >=
-             messageBuffer.scrollHeight - padding) {
+         messageBuffer.scrollHeight - padding) {
          scrollStick = true
      } else {
          scrollStick = false
@@ -73,6 +73,39 @@
      window.localStorage.savedServers = JSON.stringify(servers)
  })
 
+
+ app.ports.requestScrollback.subscribe(serverName => {
+     let item = window.localStorage.getItem(`scrollback.${serverName}`) || '{}'
+     let channels = JSON.parse(item)
+     let response = []
+
+     Object.keys(channels).forEach(channelName => {
+         channels[channelName].forEach(line => {
+             app.ports.receiveScrollback.send([serverName, channelName, line])
+         })
+     })
+
+
+ })
+
+
+ app.ports.saveScrollback.subscribe(args => {
+     let [serverName, channelName, line] = args
+
+     let item = window.localStorage.getItem(`scrollback.${serverName}`) || '{}'
+     let channels = JSON.parse(item)
+     let chan = channels[channelName] || []
+
+     chan.push(line)
+
+     // TODO: this should probably be tunable
+     if (chan.length >= 500) {
+         chan = chan.slice(1)
+     }
+
+     channels[channelName] = chan
+     window.localStorage.setItem(`scrollback.${serverName}`, JSON.stringify(channels))
+ })
 
  // push saved server configuration
  if (window.localStorage.savedServers) {

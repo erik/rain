@@ -40,6 +40,7 @@ subscriptions model =
         Sub.batch
             (List.append
                 [ Ports.addSavedServer AddServer
+                , Ports.receiveScrollback (\( s, c, l ) -> ReceiveScrollback s c l)
                 , Time.every Time.second Tick
                 ]
                 recvWs

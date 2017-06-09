@@ -101,10 +101,16 @@ viewForm form =
                                 [ placeholder ex ]
                             ]
                     )
+
+        scrollbackInput =
+            div [ class "form-row" ]
+                [ label [] [ text "Save scrollback" ]
+                , Input.checkboxInput (Form.getFieldAsBool "saveScrollback" form) []
+                ]
     in
         div [ id "buffer-view" ]
             [ h1 [] [ text "Add IRC Connection" ]
-            , div [] inputsHtml
+            , div [] (inputsHtml ++ [ scrollbackInput ])
             , div [ class "form-row" ]
                 [ button
                     [ onClick Form.Submit ]

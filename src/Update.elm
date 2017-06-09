@@ -19,6 +19,7 @@ type StoreServerAction
 
 type Msg
     = AddServer ServerMetaData
+    | AddScrollback ServerInfo ChannelName Line
     | AddLine ServerInfo ChannelName Line
     | CloseChannel ServerInfo ChannelName
     | ConnectIrc ServerInfo
@@ -26,6 +27,7 @@ type Msg
     | DisconnectServer ServerInfo
     | FormMsg Form.Msg
     | ReceiveRawLine ServerName String
+    | ReceiveScrollback ServerName ChannelName Line
     | RefreshScroll Bool
     | SelectChannel ServerInfo ChannelName
     | SendLine ServerInfo ChannelInfo String
@@ -103,11 +105,10 @@ update msg model =
                     , "NICK " ++ server.nick
                     , "USER " ++ server.nick ++ " * * :" ++ server.nick
                     ]
-
-                connectionMessages =
-                    List.map (SendRawLine server) lines
             in
-                List.foldr (andThen) ( model, Cmd.none ) connectionMessages
+                lines
+                    |> List.map (SendRawLine server)
+                    |> List.foldr (andThen) ( model, Cmd.none )
 
         AddLine serverInfo channelName line ->
             let
@@ -138,6 +139,17 @@ update msg model =
                         Noop
             in
                 update cmd model_
+
+        AddScrollback serverInfo channelName line ->
+            model ! [ Ports.saveScrollback ( serverInfo.name, channelName, line ) ]
+
+        ReceiveScrollback serverName channelName line ->
+            case getServer model serverName of
+                Just serverInfo ->
+                    update (AddLine serverInfo channelName line) model
+
+                _ ->
+                    Debug.crash "unknown server" serverName
 
         SendLine serverInfo chanInfo line ->
             let
@@ -503,16 +515,22 @@ handleMessage serverInfo user target message ts model =
                 RefreshScroll False
             else
                 Noop
+
+        scrollbackMsg =
+            if (not user.isServer) && serverInfo.meta.saveScrollback then
+                AddScrollback serverInfo target_ newLine
+            else
+                Noop
     in
         update newMsg model
             |> andThen refreshMsg
+            |> andThen scrollbackMsg
 
 
 handleCommand : ServerInfo -> Time.Time -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
 handleCommand serverInfo ts msg model =
     case ( msg.command, msg.params ) of
         -- Clean out the buffers when we rejoin.
-        -- TODO: this should be conditional on whether or not this is a bouncer.
         ( "001", _ ) ->
             let
                 channels_ =
@@ -527,7 +545,7 @@ handleCommand serverInfo ts msg model =
                         |> Dict.insert serverInfo.name serverInfo_
                         |> \info -> { model | servers = info }
             in
-                model_ ! []
+                model_ ! [ Ports.requestScrollback serverInfo.name ]
 
         ( "PING", params ) ->
             let
