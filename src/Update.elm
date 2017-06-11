@@ -19,23 +19,23 @@ type StoreServerAction
 
 type Msg
     = AddServer ServerMetaData
-    | AddScrollback ServerInfo ChannelName Line
-    | AddLine ServerInfo ChannelName Line
-    | ClearChannel ServerInfo ChannelName
-    | CloseChannel ServerInfo ChannelName
+    | AddScrollback ServerInfo BufferName Line
+    | AddLine ServerInfo BufferName Line
+    | ClearBuffer ServerInfo BufferName
+    | CloseBuffer ServerInfo BufferName
     | ConnectIrc ServerInfo
-    | CreateChannel ServerInfo ChannelName
+    | CreateBuffer ServerInfo BufferName
     | DisconnectServer ServerInfo
     | FormMsg Form.Msg
     | ReceiveRawLine ServerName String
-    | ReceiveScrollback ServerName ChannelName Line
+    | ReceiveScrollback ServerName BufferName Line
     | RefreshScroll Bool
-    | SelectChannel ServerInfo ChannelName
-    | SendLine ServerInfo ChannelInfo String
+    | SelectBuffer ServerInfo BufferName
+    | SendLine ServerInfo BufferInfo String
     | SendNotification String String
     | SendRawLine ServerInfo String
     | ShowAddServerForm
-    | TabCompleteLine ServerInfo ChannelInfo
+    | TabCompleteLine ServerInfo BufferInfo
     | Tick Time
     | TypeLine String
     | UpdateServerStore ServerInfo StoreServerAction
@@ -61,9 +61,9 @@ update msg model =
                 socketUrl =
                     String.concat [ meta.proxyHost, "?", queryString ]
 
-                networkChannel =
-                    newChannel meta.name
-                        |> \chan -> { chan | isServer = True }
+                networkBuffer =
+                    newBuffer meta.name
+                        |> \buf -> { buf | isServer = True }
 
                 pass =
                     -- TODO: meta.pass should be a maybe in the first place.
@@ -77,9 +77,9 @@ update msg model =
                     , nick = meta.nick
                     , pass = pass
                     , name = meta.name
-                    , networkChannel = networkChannel
+                    , networkBuffer = networkBuffer
                     , meta = meta
-                    , channels = Dict.empty
+                    , buffers = Dict.empty
                     }
 
                 servers_ =
@@ -111,14 +111,14 @@ update msg model =
                     |> List.map (SendRawLine server)
                     |> List.foldr (andThen) ( model, Cmd.none )
 
-        AddLine serverInfo channelName line ->
+        AddLine serverInfo bufferName line ->
             let
-                chanInfo =
-                    getOrCreateChannel serverInfo channelName
-                        |> \c -> { c | buffer = appendLine c.buffer line }
+                bufInfo =
+                    getOrCreateBuffer serverInfo bufferName
+                        |> \b -> { b | buffer = appendLine b.buffer line }
 
                 model_ =
-                    setChannel serverInfo chanInfo model
+                    setBuffer serverInfo bufInfo model
 
                 nickRegexp =
                     Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
@@ -128,31 +128,31 @@ update msg model =
 
                 isDirectMessage =
                     (serverInfo.nick /= line.nick)
-                        && (not (String.startsWith "#" channelName))
+                        && (not (String.startsWith "#" bufferName))
 
                 body =
                     String.concat [ "<", line.nick, ">: ", line.message ]
 
                 cmd =
-                    if (not chanInfo.isServer) && (matchesNick || isDirectMessage) then
-                        SendNotification chanInfo.name body
+                    if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
+                        SendNotification bufInfo.name body
                     else
                         Noop
             in
                 update cmd model_
 
-        AddScrollback serverInfo channelName line ->
-            model ! [ Ports.saveScrollback ( serverInfo.name, channelName, line ) ]
+        AddScrollback serverInfo bufferName line ->
+            model ! [ Ports.saveScrollback ( serverInfo.name, bufferName, line ) ]
 
-        ReceiveScrollback serverName channelName line ->
+        ReceiveScrollback serverName bufferName line ->
             case getServer model serverName of
                 Just serverInfo ->
-                    update (AddLine serverInfo channelName line) model
+                    update (AddLine serverInfo bufferName line) model
 
                 _ ->
                     Debug.crash "unknown server" serverName
 
-        SendLine serverInfo chanInfo line ->
+        SendLine serverInfo bufInfo line ->
             let
                 privmsg target msg =
                     let
@@ -165,7 +165,7 @@ update msg model =
                         rawLine =
                             String.join " " [ "PRIVMSG", target, ":" ++ msg ]
                     in
-                        if chanInfo.isServer then
+                        if bufInfo.isServer then
                             [ AddLine serverInfo serverBufferName line ]
                         else
                             [ SendRawLine serverInfo rawLine
@@ -198,14 +198,14 @@ update msg model =
                             , message = msg
                             }
                     in
-                        [ AddLine serverInfo chanInfo.name line ]
+                        [ AddLine serverInfo bufInfo.name line ]
 
                 slashCommand cmd params =
                     case ( String.toLower cmd, params ) of
                         ( "/join", [ channel ] ) ->
                             if String.startsWith "#" channel then
                                 [ SendRawLine serverInfo ("JOIN " ++ channel)
-                                , SelectChannel serverInfo channel
+                                , SelectBuffer serverInfo channel
                                 ]
                             else
                                 addErrorMessage "channel names must begin with #"
@@ -214,30 +214,30 @@ update msg model =
                             if String.startsWith "#" nick then
                                 addErrorMessage "can only initiate queries with users"
                             else
-                                [ SelectChannel serverInfo nick ]
+                                [ SelectBuffer serverInfo nick ]
 
                         ( "/part", [] ) ->
-                            slashCommand "/part" [ chanInfo.name ]
+                            slashCommand "/part" [ bufInfo.name ]
 
                         ( "/part", [ channel ] ) ->
                             [ SendRawLine serverInfo ("PART " ++ channel)
-                            , CloseChannel serverInfo channel
+                            , CloseBuffer serverInfo channel
                             ]
 
                         ( "/close", [] ) ->
-                            [ ClearChannel serverInfo chanInfo.name
-                            , CloseChannel serverInfo chanInfo.name
+                            [ ClearBuffer serverInfo bufInfo.name
+                            , CloseBuffer serverInfo bufInfo.name
                             ]
 
                         ( "/clear", [] ) ->
-                            [ ClearChannel serverInfo chanInfo.name ]
+                            [ ClearBuffer serverInfo bufInfo.name ]
 
                         ( "/me", rest ) ->
                             let
                                 msg =
                                     String.join " " rest
                             in
-                                ctcp chanInfo.name "ACTION" msg
+                                ctcp bufInfo.name "ACTION" msg
 
                         ( "/privmsg", target :: rest ) ->
                             privmsg target (String.join " " rest)
@@ -254,21 +254,21 @@ update msg model =
                         ( "/names", [] ) ->
                             let
                                 nicks =
-                                    chanInfo.users
+                                    bufInfo.users
                                         |> Set.toList
                                         |> List.take 100
 
                                 message =
-                                    [ Set.size chanInfo.users |> toString, "users:" ]
+                                    [ Set.size bufInfo.users |> toString, "users:" ]
                                         ++ nicks
 
                                 line =
                                     { ts = model.currentTime
                                     , message = String.join " " message
-                                    , nick = chanInfo.name
+                                    , nick = bufInfo.name
                                     }
                             in
-                                [ AddLine serverInfo chanInfo.name line ]
+                                [ AddLine serverInfo bufInfo.name line ]
 
                         ( "/server", [ "save" ] ) ->
                             [ UpdateServerStore serverInfo StoreServer ]
@@ -291,7 +291,7 @@ update msg model =
                             slashCommand (commandAlias cmd) params
 
                         _ ->
-                            privmsg chanInfo.name line
+                            privmsg bufInfo.name line
             in
                 if model.inputLine == "" then
                     model ! []
@@ -345,27 +345,27 @@ update msg model =
                     _ ->
                         Debug.crash "tried to select a bad server"
 
-        CreateChannel serverInfo channelName ->
+        CreateBuffer serverInfo bufferName ->
             let
-                channel =
-                    Model.newChannel channelName
+                buffer =
+                    Model.newBuffer bufferName
 
                 model_ =
-                    setChannel serverInfo channel model
+                    setBuffer serverInfo buffer model
             in
                 model_ ! []
 
-        SelectChannel serverInfo channelName ->
+        SelectBuffer serverInfo bufferName ->
             let
-                channel =
-                    getOrCreateChannel serverInfo channelName
+                buffer =
+                    getOrCreateBuffer serverInfo bufferName
                         |> \chan -> { chan | lastChecked = model.currentTime }
 
                 model_ =
-                    setChannel serverInfo channel model
+                    setBuffer serverInfo buffer model
                         |> \model ->
                             { model
-                                | current = Just ( serverInfo.name, channelName )
+                                | current = Just ( serverInfo.name, bufferName )
                                 , newServerForm = Nothing
                             }
             in
@@ -377,7 +377,7 @@ update msg model =
         SendNotification title message ->
             ( model, Ports.sendNotification ( title, message ) )
 
-        TabCompleteLine serverInfo channelInfo ->
+        TabCompleteLine serverInfo bufferInfo ->
             let
                 words =
                     String.split " " model.inputLine
@@ -392,7 +392,7 @@ update msg model =
                     lastWord
                         |> Maybe.map
                             (\w ->
-                                channelInfo.users
+                                bufferInfo.users
                                     |> Set.filter (String.startsWith w)
                                     |> Set.toList
                             )
@@ -424,9 +424,9 @@ update msg model =
             let
                 model_ =
                     case getActive model of
-                        Just ( serverInfo, chanInfo ) ->
-                            setChannel serverInfo
-                                { chanInfo | lastChecked = time }
+                        Just ( serverInfo, bufInfo ) ->
+                            setBuffer serverInfo
+                                { bufInfo | lastChecked = time }
                                 model
 
                         Nothing ->
@@ -463,29 +463,29 @@ update msg model =
             in
                 { model | newServerForm = Just form } ! []
 
-        ClearChannel serverInfo channelName ->
-            case getChannel serverInfo channelName of
-                Just channel ->
+        ClearBuffer serverInfo bufferName ->
+            case getBuffer serverInfo bufferName of
+                Just buffer ->
                     let
-                        channel_ =
-                            { channel | buffer = [] }
+                        buffer_ =
+                            { buffer | buffer = [] }
                     in
-                        (setChannel serverInfo channel_ model)
-                            ! [ Ports.clearScrollback ( serverInfo.name, channelName ) ]
+                        (setBuffer serverInfo buffer_ model)
+                            ! [ Ports.clearScrollback ( serverInfo.name, bufferName ) ]
 
                 Nothing ->
-                    Debug.crash "bad channel name given?" channelName
+                    Debug.crash "bad buffer name given?" bufferName
 
-        CloseChannel serverInfo channelName ->
+        CloseBuffer serverInfo bufferName ->
             let
                 current =
-                    if model.current == Just ( serverInfo.name, channelName ) then
+                    if model.current == Just ( serverInfo.name, bufferName ) then
                         Nothing
                     else
                         model.current
 
                 serverInfo_ =
-                    { serverInfo | channels = Dict.remove (String.toLower channelName) serverInfo.channels }
+                    { serverInfo | buffers = Dict.remove (String.toLower bufferName) serverInfo.buffers }
 
                 model_ =
                     { model
@@ -571,12 +571,12 @@ handleCommand serverInfo ts msg model =
         -- Clean out the buffers when we rejoin.
         ( "001", _ ) ->
             let
-                channels_ =
-                    serverInfo.channels
+                buffers_ =
+                    serverInfo.buffers
                         |> Dict.map (\_ v -> { v | buffer = [] })
 
                 serverInfo_ =
-                    { serverInfo | channels = channels_ }
+                    { serverInfo | buffers = buffers_ }
 
                 model_ =
                     model.servers
@@ -594,15 +594,15 @@ handleCommand serverInfo ts msg model =
 
         ( "JOIN", [ channel ] ) ->
             let
-                chanInfo =
-                    getChannel serverInfo channel
-                        |> Maybe.withDefault (Model.newChannel channel)
+                bufInfo =
+                    getBuffer serverInfo channel
+                        |> Maybe.withDefault (Model.newBuffer channel)
 
-                chanInfo_ =
-                    { chanInfo | users = Set.insert msg.user.nick chanInfo.users }
+                bufInfo_ =
+                    { bufInfo | users = Set.insert msg.user.nick bufInfo.users }
 
                 model_ =
-                    setChannel serverInfo chanInfo_ model
+                    setBuffer serverInfo bufInfo_ model
 
                 current_ =
                     -- We want to switch to the channel if we haven't
@@ -615,18 +615,18 @@ handleCommand serverInfo ts msg model =
                 { model_ | current = current_ } ! []
 
         ( "PART", channel :: reason ) ->
-            case getChannel serverInfo channel of
-                Just chanInfo ->
+            case getBuffer serverInfo channel of
+                Just bufInfo ->
                     let
-                        chanInfo_ =
-                            { chanInfo | users = Set.remove msg.user.nick chanInfo.users }
+                        bufInfo_ =
+                            { bufInfo | users = Set.remove msg.user.nick bufInfo.users }
 
                         model_ =
-                            setChannel serverInfo chanInfo_ model
+                            setBuffer serverInfo bufInfo_ model
 
                         ( current, cmd ) =
                             if serverInfo.nick == msg.user.nick then
-                                ( Nothing, CloseChannel serverInfo channel )
+                                ( Nothing, CloseBuffer serverInfo channel )
                             else
                                 ( model.current, Noop )
                     in
@@ -642,9 +642,9 @@ handleCommand serverInfo ts msg model =
         ( "QUIT", _ ) ->
             let
                 serverInfo_ =
-                    serverInfo.channels
-                        |> Dict.map (\_ ch -> { ch | users = Set.remove msg.user.nick ch.users })
-                        |> \channels -> { serverInfo | channels = channels }
+                    serverInfo.buffers
+                        |> Dict.map (\_ buf -> { buf | users = Set.remove msg.user.nick buf.users })
+                        |> \buffers -> { serverInfo | buffers = buffers }
 
                 model_ =
                     { model | servers = Dict.insert serverInfo.name serverInfo model.servers }
@@ -690,13 +690,13 @@ handleCommand serverInfo ts msg model =
         -- Channel topic
         ( "332", [ _, target, topic ] ) ->
             let
-                chanInfo =
-                    getOrCreateChannel serverInfo target
+                bufInfo =
+                    getOrCreateBuffer serverInfo target
 
-                chanInfo_ =
-                    { chanInfo | topic = Just topic }
+                bufInfo_ =
+                    { bufInfo | topic = Just topic }
             in
-                ( setChannel serverInfo chanInfo_ model, Cmd.none )
+                ( setBuffer serverInfo bufInfo_ model, Cmd.none )
 
         ( "333", _ ) ->
             model ! []
@@ -710,20 +710,20 @@ handleCommand serverInfo ts msg model =
                 stripSpecial =
                     Regex.replace Regex.All specialChars (\_ -> "")
 
-                chanInfo =
-                    getOrCreateChannel serverInfo channel
+                bufInfo =
+                    getOrCreateBuffer serverInfo channel
 
                 userSet =
                     stripSpecial usersString
                         |> String.words
                         |> Set.fromList
-                        |> Set.union chanInfo.users
+                        |> Set.union bufInfo.users
 
-                chanInfo_ =
-                    { chanInfo | users = userSet }
+                bufInfo_ =
+                    { bufInfo | users = userSet }
 
                 model_ =
-                    setChannel serverInfo chanInfo_ model
+                    setBuffer serverInfo bufInfo_ model
             in
                 model_ ! []
 

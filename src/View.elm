@@ -23,13 +23,13 @@ view model =
                 ( Just form, _ ) ->
                     Html.map FormMsg (viewForm form)
 
-                ( Nothing, Just ( server, channel ) ) ->
-                    viewChannel model server channel
+                ( Nothing, Just ( server, buffer ) ) ->
+                    viewBuffer model server buffer
 
                 _ ->
                     viewHelpText
     in
-        div [ id "container" ] [ viewChannelList model, chatView ]
+        div [ id "container" ] [ viewBufferList model, chatView ]
 
 
 viewHelpText : Html msg
@@ -126,38 +126,38 @@ viewForm form =
             ]
 
 
-hasUnread : ChannelInfo -> Bool
-hasUnread chan =
+hasUnread : BufferInfo -> Bool
+hasUnread buf =
     let
         lastMessageTs =
-            chan.buffer
+            buf.buffer
                 |> List.head
                 |> Maybe.andThen (\grp -> List.head grp.messages)
                 |> Maybe.map .ts
-                |> Maybe.withDefault chan.lastChecked
+                |> Maybe.withDefault buf.lastChecked
     in
-        chan.lastChecked < lastMessageTs
+        buf.lastChecked < lastMessageTs
 
 
-viewChannelList : Model -> Html Msg
-viewChannelList model =
+viewBufferList : Model -> Html Msg
+viewBufferList model =
     let
-        viewChanInfo serverInfo chanInfo =
+        viewBufInfo serverInfo bufInfo =
             li
-                [ onClick (SelectChannel serverInfo chanInfo.name)
+                [ onClick (SelectBuffer serverInfo bufInfo.name)
                 , classList
                     [ ( "clickable", True )
-                    , ( "unread", hasUnread chanInfo )
+                    , ( "unread", hasUnread bufInfo )
                     , ( "buffer-list-item", True )
                     ]
                 ]
-                [ text chanInfo.name ]
+                [ text bufInfo.name ]
 
-        channelList serverInfo =
-            serverInfo.channels
+        bufferList serverInfo =
+            serverInfo.buffers
                 |> Dict.values
                 |> List.sortBy .name
-                |> List.map (lazy2 viewChanInfo serverInfo)
+                |> List.map (lazy2 viewBufInfo serverInfo)
 
         serverList =
             model.servers
@@ -167,9 +167,9 @@ viewChannelList model =
                         div []
                             [ hr [] []
                             , li [ class "clickable" ]
-                                [ span [ onClick (SelectChannel serverInfo serverBufferName) ]
+                                [ span [ onClick (SelectBuffer serverInfo serverBufferName) ]
                                     [ text serverName ]
-                                , ul [] (channelList serverInfo)
+                                , ul [] (bufferList serverInfo)
                                 ]
                             ]
                     )
@@ -180,20 +180,20 @@ viewChannelList model =
         div [ id "buffer-list" ] [ ul [] (addServer :: serverList) ]
 
 
-viewChannel : Model -> ServerInfo -> ChannelInfo -> Html Msg
-viewChannel model server channel =
+viewBuffer : Model -> ServerInfo -> BufferInfo -> Html Msg
+viewBuffer model server buffer =
     div [ id "buffer-view" ]
         [ div [ id "buffer-header", class "flex-fixed" ]
-            [ h1 [] [ text channel.name ]
-            , viewTopic channel
+            [ h1 [] [ text buffer.name ]
+            , viewTopic buffer
             ]
-        , lazy2 viewBuffer server channel
+        , lazy2 viewBufferMessages server buffer
         , div [ id "buffer-footer", class "flex-fixed" ]
             [ input
                 [ id "input-line"
                 , placeholder server.nick
                 , onInput TypeLine
-                , onInputKey model server channel
+                , onInputKey model server buffer
                 , value model.inputLine
                 , autofocus True
                 ]
@@ -215,15 +215,15 @@ tabKey =
 {-| Handle enter / tab key presses.
 Cribbed from elm-todo
 -}
-onInputKey : Model -> ServerInfo -> ChannelInfo -> Attribute Msg
-onInputKey model server channel =
+onInputKey : Model -> ServerInfo -> BufferInfo -> Attribute Msg
+onInputKey model server buffer =
     let
         isKey code =
             if code == enterKey then
-                SendLine server channel model.inputLine
+                SendLine server buffer model.inputLine
                     |> Json.succeed
             else if code == tabKey then
-                TabCompleteLine server channel
+                TabCompleteLine server buffer
                     |> Json.succeed
             else
                 Json.fail "nope"
@@ -236,20 +236,20 @@ onInputKey model server channel =
         onWithOptions "keydown" options (Json.andThen isKey keyCode)
 
 
-viewTopic : ChannelInfo -> Html Msg
-viewTopic channel =
+viewTopic : BufferInfo -> Html Msg
+viewTopic buffer =
     let
         topic =
-            Maybe.withDefault "" channel.topic
+            Maybe.withDefault "" buffer.topic
     in
         div [ id "buffer-topic" ] (linkifyLine topic)
 
 
-viewBuffer : ServerInfo -> ChannelInfo -> Html Msg
-viewBuffer serverInfo channel =
+viewBufferMessages : ServerInfo -> BufferInfo -> Html Msg
+viewBufferMessages serverInfo buffer =
     let
         lines =
-            channel.buffer
+            buffer.buffer
                 |> List.map (viewLineGroup serverInfo)
     in
         div [ id "buffer-messages" ] lines
@@ -275,7 +275,7 @@ viewLineGroup serverInfo group =
                     ]
                     [ span
                         [ class "clickable"
-                        , onClick (SelectChannel serverInfo group.nick)
+                        , onClick (SelectBuffer serverInfo group.nick)
                         ]
                         [ text group.nick ]
                     ]

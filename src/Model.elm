@@ -11,17 +11,15 @@ type alias ServerName =
     String
 
 
-{-| TODO: rename to buffer
--}
-type alias ChannelName =
+type alias BufferName =
     String
 
 
-type alias ServerChannel =
-    ( ServerName, ChannelName )
+type alias ServerBuffer =
+    ( ServerName, BufferName )
 
 
-serverBufferName : ChannelName
+serverBufferName : BufferName
 serverBufferName =
     "::server::"
 
@@ -44,8 +42,8 @@ type alias ServerInfo =
     , pass : Maybe String
     , name : String
     , meta : ServerMetaData
-    , channels : Dict ChannelName ChannelInfo
-    , networkChannel : ChannelInfo
+    , buffers : Dict BufferName BufferInfo
+    , networkBuffer : BufferInfo
     }
 
 
@@ -75,7 +73,7 @@ type alias UserInfo =
     }
 
 
-type alias ChannelInfo =
+type alias BufferInfo =
     { name : String
     , users : Set String
     , topic : Maybe String
@@ -87,7 +85,7 @@ type alias ChannelInfo =
 
 type alias Model =
     { servers : Dict ServerName ServerInfo
-    , current : Maybe ServerChannel
+    , current : Maybe ServerBuffer
     , inputLine : String
     , currentTime : Time
     , newServerForm : Maybe (Form () ServerMetaData)
@@ -117,8 +115,8 @@ initialModel =
     }
 
 
-newChannel : String -> ChannelInfo
-newChannel name =
+newBuffer : String -> BufferInfo
+newBuffer name =
     { name = name
     , users = Set.empty
     , topic = Nothing
@@ -133,65 +131,61 @@ getServer model serverName =
     Dict.get serverName model.servers
 
 
-setChannel : ServerInfo -> ChannelInfo -> Model -> Model
-setChannel serverInfo chan model =
+setBuffer : ServerInfo -> BufferInfo -> Model -> Model
+setBuffer serverInfo buf model =
     let
         serverInfo_ =
-            if chan.isServer || chan.name == serverBufferName then
-                { serverInfo | networkChannel = { chan | isServer = True } }
+            if buf.isServer || buf.name == serverBufferName then
+                { serverInfo | networkBuffer = { buf | isServer = True } }
             else
                 let
-                    channels =
-                        Dict.insert (String.toLower chan.name) chan serverInfo.channels
+                    buffers =
+                        Dict.insert (String.toLower buf.name) buf serverInfo.buffers
                 in
-                    { serverInfo | channels = channels }
+                    { serverInfo | buffers = buffers }
     in
         { model | servers = Dict.insert serverInfo.name serverInfo_ model.servers }
 
 
-getChannel : ServerInfo -> ChannelName -> Maybe ChannelInfo
-getChannel serverInfo channelName =
-    if channelName == serverBufferName then
-        Just serverInfo.networkChannel
+getBuffer : ServerInfo -> BufferName -> Maybe BufferInfo
+getBuffer serverInfo bufferName =
+    if bufferName == serverBufferName then
+        Just serverInfo.networkBuffer
     else
-        Dict.get (String.toLower channelName) serverInfo.channels
+        Dict.get (String.toLower bufferName) serverInfo.buffers
 
 
-getServerChannel : Model -> ServerChannel -> Maybe ( ServerInfo, ChannelInfo )
-getServerChannel model ( sn, cn ) =
+getServerBuffer : Model -> ServerBuffer -> Maybe ( ServerInfo, BufferInfo )
+getServerBuffer model ( sn, bn ) =
     let
         server =
             getServer model sn
 
-        channel =
+        buffer =
             server
-                |> Maybe.andThen (\server -> getChannel server cn)
+                |> Maybe.andThen (\server -> getBuffer server bn)
     in
-        Maybe.map2 (,) server channel
+        Maybe.map2 (,) server buffer
 
 
-getOrCreateChannel : ServerInfo -> ChannelName -> ChannelInfo
-getOrCreateChannel serverInfo channelName =
-    getChannel serverInfo channelName
-        |> Maybe.withDefault (newChannel channelName)
+getOrCreateBuffer : ServerInfo -> BufferName -> BufferInfo
+getOrCreateBuffer serverInfo bufferName =
+    getBuffer serverInfo bufferName |> Maybe.withDefault (newBuffer bufferName)
 
 
-getActive : Model -> Maybe ( ServerInfo, ChannelInfo )
+getActive : Model -> Maybe ( ServerInfo, BufferInfo )
 getActive model =
-    model.current
-        |> Maybe.andThen (getServerChannel model)
+    model.current |> Maybe.andThen (getServerBuffer model)
 
 
-getActiveChannel : Model -> Maybe ChannelInfo
-getActiveChannel model =
-    getActive model
-        |> Maybe.map Tuple.second
+getActiveBuffer : Model -> Maybe BufferInfo
+getActiveBuffer model =
+    getActive model |> Maybe.map Tuple.second
 
 
 getActiveServer : Model -> Maybe ServerInfo
 getActiveServer model =
-    getActive model
-        |> Maybe.map Tuple.first
+    getActive model |> Maybe.map Tuple.first
 
 
 appendLine : List LineGroup -> Line -> List LineGroup
