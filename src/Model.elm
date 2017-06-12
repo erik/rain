@@ -72,9 +72,17 @@ type alias UserInfo =
     }
 
 
+{-| to avoid choking on large channels, we wait to uniquify the user names
+until we receive the "end of names list" message from the server.
+-}
+type UserList
+    = UsersLoading (List String)
+    | UsersLoaded (Set String)
+
+
 type alias BufferInfo =
     { name : String
-    , users : Set String
+    , users : UserList
     , topic : Maybe String
     , buffer : Buffer
     , lastChecked : Time.Time
@@ -117,12 +125,32 @@ initialModel =
 newBuffer : String -> BufferInfo
 newBuffer name =
     { name = name
-    , users = Set.empty
+    , users = UsersLoading []
     , topic = Nothing
     , buffer = []
     , lastChecked = 0
     , isServer = name == serverBufferName
     }
+
+
+addNicks : List String -> BufferInfo -> BufferInfo
+addNicks nicks buf =
+    case buf.users of
+        UsersLoading list ->
+            { buf | users = UsersLoading (list ++ nicks) }
+
+        UsersLoaded set ->
+            { buf | users = UsersLoaded (Set.fromList nicks |> Set.union set) }
+
+
+removeNick : String -> BufferInfo -> BufferInfo
+removeNick nick buf =
+    case buf.users of
+        UsersLoading list ->
+            { buf | users = UsersLoading (List.filter (\x -> not (x == nick)) list) }
+
+        UsersLoaded set ->
+            { buf | users = UsersLoaded (Set.remove nick set) }
 
 
 getServer : Model -> ServerName -> Maybe ServerInfo

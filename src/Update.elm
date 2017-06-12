@@ -248,13 +248,19 @@ update msg model =
 
                         ( "/names", [] ) ->
                             let
+                                nickList =
+                                    case bufInfo.users of
+                                        UsersLoading list ->
+                                            list
+
+                                        UsersLoaded set ->
+                                            Set.toList set
+
                                 nicks =
-                                    bufInfo.users
-                                        |> Set.toList
-                                        |> List.take 100
+                                    List.take 100 nickList
 
                                 message =
-                                    [ Set.size bufInfo.users |> toString, "users:" ]
+                                    [ List.length nickList |> toString, "users:" ]
                                         ++ nicks
 
                                 line =
@@ -392,9 +398,14 @@ update msg model =
                     lastWord
                         |> Maybe.map
                             (\w ->
-                                bufferInfo.users
-                                    |> Set.filter (String.startsWith w)
-                                    |> Set.toList
+                                (case bufferInfo.users of
+                                    UsersLoading list ->
+                                        list
+
+                                    UsersLoaded set ->
+                                        Set.toList set
+                                )
+                                    |> List.filter (String.startsWith w)
                             )
 
                 longestCompletion =
@@ -597,12 +608,10 @@ handleCommand serverInfo ts msg model =
                 bufInfo =
                     getBuffer serverInfo channel
                         |> Maybe.withDefault (newBuffer channel)
-
-                bufInfo_ =
-                    { bufInfo | users = Set.insert msg.user.nick bufInfo.users }
+                        |> addNicks [ msg.user.nick ]
 
                 model_ =
-                    setBuffer serverInfo bufInfo_ model
+                    setBuffer serverInfo bufInfo model
 
                 current_ =
                     -- We want to switch to the channel if we haven't
@@ -619,7 +628,7 @@ handleCommand serverInfo ts msg model =
                 Just bufInfo ->
                     let
                         bufInfo_ =
-                            { bufInfo | users = Set.remove msg.user.nick bufInfo.users }
+                            removeNick msg.user.nick bufInfo
 
                         model_ =
                             setBuffer serverInfo bufInfo_ model
@@ -643,7 +652,7 @@ handleCommand serverInfo ts msg model =
             let
                 serverInfo_ =
                     serverInfo.buffers
-                        |> Dict.map (\_ buf -> { buf | users = Set.remove msg.user.nick buf.users })
+                        |> Dict.map (\_ buf -> removeNick msg.user.nick buf)
                         |> \buffers -> { serverInfo | buffers = buffers }
 
                 model_ =
@@ -710,26 +719,43 @@ handleCommand serverInfo ts msg model =
                 stripSpecial =
                     Regex.replace Regex.All specialChars (\_ -> "")
 
-                bufInfo =
-                    getOrCreateBuffer serverInfo channel
-
-                userSet =
+                userList =
                     stripSpecial usersString
                         |> String.words
-                        |> Set.fromList
-                        |> Set.union bufInfo.users
 
-                bufInfo_ =
-                    { bufInfo | users = userSet }
+                bufInfo =
+                    getOrCreateBuffer serverInfo channel
+                        |> addNicks userList
 
                 model_ =
-                    setBuffer serverInfo bufInfo_ model
+                    setBuffer serverInfo bufInfo model
             in
                 model_ ! []
 
         -- END of /NAMES
-        ( "366", _ ) ->
-            model ! []
+        ( "366", [ _, channel, _ ] ) ->
+            case getBuffer serverInfo channel of
+                Just bufInfo ->
+                    let
+                        users =
+                            case bufInfo.users of
+                                UsersLoading list ->
+                                    UsersLoaded (Set.fromList list)
+
+                                set ->
+                                    set
+
+                        model_ =
+                            setBuffer serverInfo { bufInfo | users = users } model
+                    in
+                        model_ ! []
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "weird: 366 for unknown channel" channel
+                    in
+                        model ! []
 
         ( "NICK", [ nick ] ) ->
             let
