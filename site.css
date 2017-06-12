@@ -80,17 +80,22 @@ h1 {
     display: inline-block;
 }
 
+#buffer-header {
+    position: relative;
+}
+
 #buffer-topic {
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    width: 100%;
     padding-bottom: .5em;
+    background: white;
 }
 
 #buffer-topic:hover {
     white-space: normal;
     overflow: auto;
+    position: absolute;
 }
 
 #input-line {
