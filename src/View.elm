@@ -289,12 +289,13 @@ viewLineGroup serverInfo group =
                     ]
                 ]
 
-        messages =
-            List.map (formatLine serverInfo) group.messages
+        formatMessages msgs =
+            List.map (formatLine serverInfo.nick) msgs
+                |> div [ class "group-messages" ]
     in
         div [ class "group" ]
             [ groupHead
-            , div [ class "group-messages" ] messages
+            , lazy formatMessages group.messages
             ]
 
 
@@ -315,8 +316,8 @@ linkifyLine line =
             |> List.intersperse (span [] [ text " " ])
 
 
-formatLine : ServerInfo -> Line -> Html Msg
-formatLine serverInfo line =
+formatLine : String -> Line -> Html Msg
+formatLine nick line =
     let
         timeStr =
             line.ts
@@ -339,7 +340,7 @@ formatLine serverInfo line =
 
         matchesNick =
             line.message
-                |> Regex.contains (regex ("\\b" ++ serverInfo.nick ++ "\\b"))
+                |> Regex.contains (regex ("\\b" ++ nick ++ "\\b"))
 
         copyText =
             span [ class "copy-text" ] [ text ("<" ++ line.nick ++ "> ") ]
