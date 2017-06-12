@@ -605,18 +605,28 @@ handleCommand serverInfo ts msg model =
 
         ( "JOIN", [ channel ] ) ->
             let
-                bufInfo =
+                weJoined =
+                    serverInfo.nick == msg.user.nick
+
+                buffer =
                     getBuffer serverInfo channel
                         |> Maybe.withDefault (newBuffer channel)
                         |> addNicks [ msg.user.nick ]
 
+                -- don't report unread messages in the past.
+                lastChecked =
+                    if weJoined then
+                        model.currentTime
+                    else
+                        buffer.lastChecked
+
                 model_ =
-                    setBuffer serverInfo bufInfo model
+                    setBuffer serverInfo { buffer | lastChecked = lastChecked } model
 
                 current_ =
                     -- We want to switch to the channel if we haven't
                     -- joined anything else yet.
-                    if serverInfo.nick == msg.user.nick && model.current == Nothing then
+                    if weJoined && model.current == Nothing then
                         Just ( serverInfo.name, channel )
                     else
                         model.current
