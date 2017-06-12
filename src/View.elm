@@ -158,7 +158,7 @@ viewBufferList model =
                 |> Dict.values
                 |> List.filter (\buf -> not buf.isServer)
                 |> List.sortBy .name
-                |> List.map (viewBufInfo serverInfo.name)
+                |> List.map (viewBufInfo serverInfo.meta.name)
 
         serverList =
             model.servers
@@ -186,7 +186,7 @@ viewBuffer model server buffer =
     let
         bufferName =
             if buffer.isServer then
-                server.name
+                server.meta.name
             else
                 buffer.name
     in
@@ -199,7 +199,7 @@ viewBuffer model server buffer =
             , div [ id "buffer-footer", class "flex-fixed" ]
                 [ input
                     [ id "input-line"
-                    , placeholder server.nick
+                    , placeholder server.meta.nick
                     , onInput TypeLine
                     , onInputKey model server buffer
                     , value model.inputLine
@@ -287,7 +287,7 @@ viewLineGroup serverMeta group =
                 ]
 
         formatMessages msgs =
-            List.map (formatLine group.nick) msgs
+            List.map (formatLine serverMeta.name) msgs
                 |> div [ class "group-messages" ]
     in
         div [ class "group" ]

@@ -38,10 +38,8 @@ type alias ServerMetaData =
 
 type alias ServerInfo =
     { socket : String
-    , nick : String
-    , pass : Maybe String
-    , name : String
     , meta : ServerMetaData
+    , pass : Maybe String
     , buffers : Dict BufferName BufferInfo
     }
 
@@ -171,7 +169,7 @@ setBuffer serverInfo buf model =
             in
                 { serverInfo | buffers = buffers }
     in
-        { model | servers = Dict.insert serverInfo.name serverInfo_ model.servers }
+        { model | servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers }
 
 
 getBuffer : ServerInfo -> BufferName -> Maybe BufferInfo

@@ -70,9 +70,7 @@ update msg model =
 
                 info =
                     { socket = socketUrl
-                    , nick = meta.nick
                     , pass = pass
-                    , name = meta.name
                     , meta = meta
                     , buffers = Dict.empty
                     }
@@ -84,7 +82,7 @@ update msg model =
                 { model | servers = servers_ } ! []
 
         DisconnectServer serverInfo ->
-            { model | servers = Dict.remove serverInfo.name model.servers } ! []
+            { model | servers = Dict.remove serverInfo.meta.name model.servers } ! []
 
         ConnectIrc server ->
             let
@@ -98,8 +96,8 @@ update msg model =
                     , "CAP REQ znc.in/server-time-iso"
                     , "CAP REQ server-time"
                     , "CAP END"
-                    , "NICK " ++ server.nick
-                    , "USER " ++ server.nick ++ " * * :" ++ server.nick
+                    , "NICK " ++ server.meta.nick
+                    , "USER " ++ server.meta.nick ++ " * * :" ++ server.meta.nick
                     ]
             in
                 lines
@@ -116,13 +114,13 @@ update msg model =
                     setBuffer serverInfo bufInfo model
 
                 nickRegexp =
-                    Regex.regex ("\\b" ++ serverInfo.nick ++ "\\b")
+                    Regex.regex ("\\b" ++ serverInfo.meta.nick ++ "\\b")
 
                 matchesNick =
                     Regex.contains nickRegexp line.message
 
                 isDirectMessage =
-                    (serverInfo.nick /= line.nick)
+                    (serverInfo.meta.nick /= line.nick)
                         && (not (String.startsWith "#" bufferName))
 
                 body =
@@ -137,7 +135,7 @@ update msg model =
                 update cmd model_
 
         AddScrollback serverInfo bufferName line ->
-            model ! [ Ports.saveScrollback ( serverInfo.name, bufferName, line ) ]
+            model ! [ Ports.saveScrollback ( serverInfo.meta.name, bufferName, line ) ]
 
         ReceiveScrollback serverName bufferName line ->
             case getServer model serverName of
@@ -153,7 +151,7 @@ update msg model =
                     let
                         line =
                             { ts = model.currentTime
-                            , nick = serverInfo.nick
+                            , nick = serverInfo.meta.nick
                             , message = msg
                             }
 
@@ -200,7 +198,7 @@ update msg model =
                         ( "/join", [ channel ] ) ->
                             if String.startsWith "#" channel then
                                 [ SendRawLine serverInfo ("JOIN " ++ channel)
-                                , SelectBuffer serverInfo.name channel
+                                , SelectBuffer serverInfo.meta.name channel
                                 ]
                             else
                                 addErrorMessage "channel names must begin with #"
@@ -209,7 +207,7 @@ update msg model =
                             if String.startsWith "#" nick then
                                 addErrorMessage "can only initiate queries with users"
                             else
-                                [ SelectBuffer serverInfo.name nick ]
+                                [ SelectBuffer serverInfo.meta.name nick ]
 
                         ( "/part", [] ) ->
                             slashCommand "/part" [ bufInfo.name ]
@@ -368,7 +366,7 @@ update msg model =
                             setBuffer serverInfo buffer model
                                 |> \model ->
                                     { model
-                                        | current = Just ( serverInfo.name, bufferName )
+                                        | current = Just ( serverInfo.meta.name, bufferName )
                                         , newServerForm = Nothing
                                     }
                     in
@@ -482,7 +480,7 @@ update msg model =
                             { buffer | buffer = [] }
                     in
                         (setBuffer serverInfo buffer_ model)
-                            ! [ Ports.clearScrollback ( serverInfo.name, bufferName ) ]
+                            ! [ Ports.clearScrollback ( serverInfo.meta.name, bufferName ) ]
 
                 Nothing ->
                     Debug.crash "bad buffer name given?" bufferName
@@ -490,7 +488,7 @@ update msg model =
         CloseBuffer serverInfo bufferName ->
             let
                 current =
-                    if model.current == Just ( serverInfo.name, bufferName ) then
+                    if model.current == Just ( serverInfo.meta.name, bufferName ) then
                         Nothing
                     else
                         model.current
@@ -501,7 +499,7 @@ update msg model =
                 model_ =
                     { model
                         | current = current
-                        , servers = Dict.insert serverInfo.name serverInfo_ model.servers
+                        , servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers
                     }
             in
                 model_ ! []
@@ -549,7 +547,7 @@ handleMessage serverInfo user target message ts model =
 
         nick =
             if user.isServer then
-                serverInfo.name
+                serverInfo.meta.name
             else
                 user.nick
 
@@ -560,7 +558,7 @@ handleMessage serverInfo user target message ts model =
             AddLine serverInfo target_ newLine
 
         refreshMsg =
-            if Just ( serverInfo.name, target_ ) == model.current then
+            if Just ( serverInfo.meta.name, target_ ) == model.current then
                 RefreshScroll False
             else
                 Noop
@@ -591,10 +589,10 @@ handleCommand serverInfo ts msg model =
 
                 model_ =
                     model.servers
-                        |> Dict.insert serverInfo.name serverInfo_
+                        |> Dict.insert serverInfo.meta.name serverInfo_
                         |> \info -> { model | servers = info }
             in
-                model_ ! [ Ports.requestScrollback serverInfo.name ]
+                model_ ! [ Ports.requestScrollback serverInfo.meta.name ]
 
         ( "PING", params ) ->
             let
@@ -606,7 +604,7 @@ handleCommand serverInfo ts msg model =
         ( "JOIN", [ channel ] ) ->
             let
                 weJoined =
-                    serverInfo.nick == msg.user.nick
+                    serverInfo.meta.nick == msg.user.nick
 
                 buffer =
                     getBuffer serverInfo channel
@@ -627,7 +625,7 @@ handleCommand serverInfo ts msg model =
                     -- We want to switch to the channel if we haven't
                     -- joined anything else yet.
                     if weJoined && model.current == Nothing then
-                        Just ( serverInfo.name, channel )
+                        Just ( serverInfo.meta.name, channel )
                     else
                         model.current
             in
@@ -644,7 +642,7 @@ handleCommand serverInfo ts msg model =
                             setBuffer serverInfo bufInfo_ model
 
                         ( current, cmd ) =
-                            if serverInfo.nick == msg.user.nick then
+                            if serverInfo.meta.nick == msg.user.nick then
                                 ( Nothing, CloseBuffer serverInfo channel )
                             else
                                 ( model.current, Noop )
@@ -666,7 +664,7 @@ handleCommand serverInfo ts msg model =
                         |> \buffers -> { serverInfo | buffers = buffers }
 
                 model_ =
-                    { model | servers = Dict.insert serverInfo.name serverInfo model.servers }
+                    { model | servers = Dict.insert serverInfo.meta.name serverInfo model.servers }
             in
                 ( model_, Cmd.none )
 
@@ -769,14 +767,20 @@ handleCommand serverInfo ts msg model =
 
         ( "NICK", [ nick ] ) ->
             let
-                server_ =
-                    if msg.user.nick == serverInfo.nick then
-                        { serverInfo | nick = nick }
+                myNick =
+                    if msg.user.nick == serverInfo.meta.nick then
+                        nick
                     else
-                        serverInfo
+                        serverInfo.meta.nick
+
+                server =
+                    serverInfo.meta
+                        |> \m ->
+                            { m | nick = myNick }
+                                |> \m -> { serverInfo | meta = m }
 
                 model_ =
-                    { model | servers = Dict.insert serverInfo.name server_ model.servers }
+                    { model | servers = Dict.insert serverInfo.meta.name server model.servers }
             in
                 model_ ! []
 

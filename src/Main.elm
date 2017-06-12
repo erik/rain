@@ -34,7 +34,7 @@ subscriptions model =
                 |> Dict.values
                 |> List.map
                     (\info ->
-                        WebSocket.listen info.socket (ReceiveRawLine info.name)
+                        WebSocket.listen info.socket (ReceiveRawLine info.meta.name)
                     )
     in
         Sub.batch
