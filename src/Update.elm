@@ -61,10 +61,6 @@ update msg model =
                 socketUrl =
                     String.concat [ meta.proxyHost, "?", queryString ]
 
-                networkBuffer =
-                    newBuffer meta.name
-                        |> \buf -> { buf | isServer = True }
-
                 pass =
                     -- TODO: meta.pass should be a maybe in the first place.
                     if meta.pass == "" then
@@ -77,7 +73,6 @@ update msg model =
                     , nick = meta.nick
                     , pass = pass
                     , name = meta.name
-                    , networkBuffer = networkBuffer
                     , meta = meta
                     , buffers = Dict.empty
                     }
@@ -166,7 +161,7 @@ update msg model =
                             String.join " " [ "PRIVMSG", target, ":" ++ msg ]
                     in
                         if bufInfo.isServer then
-                            [ AddLine serverInfo serverBufferName line ]
+                            addErrorMessage "use /quote to send messages directly to the server"
                         else
                             [ SendRawLine serverInfo rawLine
                             , AddLine serverInfo target line
@@ -596,7 +591,7 @@ handleCommand serverInfo ts msg model =
             let
                 bufInfo =
                     getBuffer serverInfo channel
-                        |> Maybe.withDefault (Model.newBuffer channel)
+                        |> Maybe.withDefault (newBuffer channel)
 
                 bufInfo_ =
                     { bufInfo | users = Set.insert msg.user.nick bufInfo.users }

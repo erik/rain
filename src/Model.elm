@@ -21,7 +21,7 @@ type alias ServerBuffer =
 
 serverBufferName : BufferName
 serverBufferName =
-    "::server::"
+    ":server"
 
 
 type alias ServerMetaData =
@@ -43,7 +43,6 @@ type alias ServerInfo =
     , name : String
     , meta : ServerMetaData
     , buffers : Dict BufferName BufferInfo
-    , networkBuffer : BufferInfo
     }
 
 
@@ -122,7 +121,7 @@ newBuffer name =
     , topic = Nothing
     , buffer = []
     , lastChecked = 0
-    , isServer = False
+    , isServer = name == serverBufferName
     }
 
 
@@ -134,25 +133,22 @@ getServer model serverName =
 setBuffer : ServerInfo -> BufferInfo -> Model -> Model
 setBuffer serverInfo buf model =
     let
+        name_ =
+            String.toLower buf.name
+
         serverInfo_ =
-            if buf.isServer || buf.name == serverBufferName then
-                { serverInfo | networkBuffer = { buf | isServer = True } }
-            else
-                let
-                    buffers =
-                        Dict.insert (String.toLower buf.name) buf serverInfo.buffers
-                in
-                    { serverInfo | buffers = buffers }
+            let
+                buffers =
+                    Dict.insert name_ buf serverInfo.buffers
+            in
+                { serverInfo | buffers = buffers }
     in
         { model | servers = Dict.insert serverInfo.name serverInfo_ model.servers }
 
 
 getBuffer : ServerInfo -> BufferName -> Maybe BufferInfo
 getBuffer serverInfo bufferName =
-    if bufferName == serverBufferName then
-        Just serverInfo.networkBuffer
-    else
-        Dict.get (String.toLower bufferName) serverInfo.buffers
+    Dict.get (String.toLower bufferName) serverInfo.buffers
 
 
 getServerBuffer : Model -> ServerBuffer -> Maybe ( ServerInfo, BufferInfo )
@@ -170,7 +166,8 @@ getServerBuffer model ( sn, bn ) =
 
 getOrCreateBuffer : ServerInfo -> BufferName -> BufferInfo
 getOrCreateBuffer serverInfo bufferName =
-    getBuffer serverInfo bufferName |> Maybe.withDefault (newBuffer bufferName)
+    getBuffer serverInfo bufferName
+        |> Maybe.withDefault (newBuffer bufferName)
 
 
 getActive : Model -> Maybe ( ServerInfo, BufferInfo )

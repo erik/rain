@@ -156,8 +156,9 @@ viewBufferList model =
         bufferList serverInfo =
             serverInfo.buffers
                 |> Dict.values
+                |> List.filter (\buf -> not buf.isServer)
                 |> List.sortBy .name
-                |> List.map (lazy2 viewBufInfo serverInfo)
+                |> List.map (viewBufInfo serverInfo)
 
         serverList =
             model.servers
@@ -182,24 +183,31 @@ viewBufferList model =
 
 viewBuffer : Model -> ServerInfo -> BufferInfo -> Html Msg
 viewBuffer model server buffer =
-    div [ id "buffer-view" ]
-        [ div [ id "buffer-header", class "flex-fixed" ]
-            [ h1 [] [ text buffer.name ]
-            , viewTopic buffer
-            ]
-        , lazy2 viewBufferMessages server buffer
-        , div [ id "buffer-footer", class "flex-fixed" ]
-            [ input
-                [ id "input-line"
-                , placeholder server.nick
-                , onInput TypeLine
-                , onInputKey model server buffer
-                , value model.inputLine
-                , autofocus True
+    let
+        bufferName =
+            if buffer.isServer then
+                server.name
+            else
+                buffer.name
+    in
+        div [ id "buffer-view" ]
+            [ div [ id "buffer-header", class "flex-fixed" ]
+                [ h1 [] [ text bufferName ]
+                , viewTopic buffer
                 ]
-                []
+            , lazy2 viewBufferMessages server buffer
+            , div [ id "buffer-footer", class "flex-fixed" ]
+                [ input
+                    [ id "input-line"
+                    , placeholder server.nick
+                    , onInput TypeLine
+                    , onInputKey model server buffer
+                    , value model.inputLine
+                    , autofocus True
+                    ]
+                    []
+                ]
             ]
-        ]
 
 
 enterKey : number
