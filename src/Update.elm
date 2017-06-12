@@ -30,7 +30,7 @@ type Msg
     | ReceiveRawLine ServerName String
     | ReceiveScrollback ServerName BufferName Line
     | RefreshScroll Bool
-    | SelectBuffer ServerInfo BufferName
+    | SelectBuffer ServerName BufferName
     | SendLine ServerInfo BufferInfo String
     | SendNotification String String
     | SendRawLine ServerInfo String
@@ -200,7 +200,7 @@ update msg model =
                         ( "/join", [ channel ] ) ->
                             if String.startsWith "#" channel then
                                 [ SendRawLine serverInfo ("JOIN " ++ channel)
-                                , SelectBuffer serverInfo channel
+                                , SelectBuffer serverInfo.name channel
                                 ]
                             else
                                 addErrorMessage "channel names must begin with #"
@@ -209,7 +209,7 @@ update msg model =
                             if String.startsWith "#" nick then
                                 addErrorMessage "can only initiate queries with users"
                             else
-                                [ SelectBuffer serverInfo nick ]
+                                [ SelectBuffer serverInfo.name nick ]
 
                         ( "/part", [] ) ->
                             slashCommand "/part" [ bufInfo.name ]
@@ -350,21 +350,26 @@ update msg model =
             in
                 model_ ! []
 
-        SelectBuffer serverInfo bufferName ->
-            let
-                buffer =
-                    getOrCreateBuffer serverInfo bufferName
-                        |> \chan -> { chan | lastChecked = model.currentTime }
+        SelectBuffer serverName bufferName ->
+            case getServer model serverName of
+                Just serverInfo ->
+                    let
+                        buffer =
+                            getOrCreateBuffer serverInfo bufferName
+                                |> \chan -> { chan | lastChecked = model.currentTime }
 
-                model_ =
-                    setBuffer serverInfo buffer model
-                        |> \model ->
-                            { model
-                                | current = Just ( serverInfo.name, bufferName )
-                                , newServerForm = Nothing
-                            }
-            in
-                update (RefreshScroll True) model_
+                        model_ =
+                            setBuffer serverInfo buffer model
+                                |> \model ->
+                                    { model
+                                        | current = Just ( serverInfo.name, bufferName )
+                                        , newServerForm = Nothing
+                                    }
+                    in
+                        update (RefreshScroll True) model_
+
+                Nothing ->
+                    Debug.crash "tried to select bad server"
 
         RefreshScroll force ->
             ( model, Ports.refreshScrollPosition force )

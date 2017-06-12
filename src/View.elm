@@ -8,7 +8,7 @@ import Form.Input as Input
 import Html exposing (..)
 import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus)
 import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
-import Html.Lazy exposing (lazy, lazy2)
+import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Json.Decode as Json
 import Model exposing (..)
 import Regex exposing (HowMany(All), regex)
@@ -142,9 +142,9 @@ hasUnread buf =
 viewBufferList : Model -> Html Msg
 viewBufferList model =
     let
-        viewBufInfo serverInfo bufInfo =
+        viewBufInfo serverName bufInfo =
             li
-                [ onClick (SelectBuffer serverInfo bufInfo.name)
+                [ onClick (SelectBuffer serverName bufInfo.name)
                 , classList
                     [ ( "clickable", True )
                     , ( "unread", hasUnread bufInfo )
@@ -158,7 +158,7 @@ viewBufferList model =
                 |> Dict.values
                 |> List.filter (\buf -> not buf.isServer)
                 |> List.sortBy .name
-                |> List.map (viewBufInfo serverInfo)
+                |> List.map (viewBufInfo serverInfo.name)
 
         serverList =
             model.servers
@@ -168,7 +168,7 @@ viewBufferList model =
                         div []
                             [ hr [] []
                             , li [ class "clickable" ]
-                                [ span [ onClick (SelectBuffer serverInfo serverBufferName) ]
+                                [ span [ onClick (SelectBuffer serverName serverBufferName) ]
                                     [ text serverName ]
                                 , ul [] (bufferList serverInfo)
                                 ]
@@ -195,7 +195,7 @@ viewBuffer model server buffer =
                 [ h1 [] [ text bufferName ]
                 , viewTopic buffer
                 ]
-            , lazy2 viewBufferMessages server buffer
+            , lazy2 viewBufferMessages server.meta buffer.buffer
             , div [ id "buffer-footer", class "flex-fixed" ]
                 [ input
                     [ id "input-line"
@@ -253,18 +253,15 @@ viewTopic buffer =
         div [ id "buffer-topic" ] (linkifyLine topic)
 
 
-viewBufferMessages : ServerInfo -> BufferInfo -> Html Msg
-viewBufferMessages serverInfo buffer =
-    let
-        lines =
-            buffer.buffer
-                |> List.map (viewLineGroup serverInfo)
-    in
-        div [ id "buffer-messages" ] lines
+viewBufferMessages : ServerMetaData -> Buffer -> Html Msg
+viewBufferMessages serverMeta buffer =
+    buffer
+        |> List.map (viewLineGroup serverMeta)
+        |> div [ id "buffer-messages" ]
 
 
-viewLineGroup : ServerInfo -> LineGroup -> Html Msg
-viewLineGroup serverInfo group =
+viewLineGroup : ServerMetaData -> LineGroup -> Html Msg
+viewLineGroup serverMeta group =
     let
         timeStr =
             group.ts
@@ -278,19 +275,19 @@ viewLineGroup serverInfo group =
                 , div
                     [ classList
                         [ ( "message-nick", True )
-                        , ( "message-nick-self", group.nick == serverInfo.nick )
+                        , ( "message-nick-self", group.nick == serverMeta.nick )
                         ]
                     ]
                     [ span
                         [ class "clickable"
-                        , onClick (SelectBuffer serverInfo group.nick)
+                        , onClick (SelectBuffer serverMeta.name group.nick)
                         ]
                         [ text group.nick ]
                     ]
                 ]
 
         formatMessages msgs =
-            List.map (formatLine serverInfo.nick) msgs
+            List.map (formatLine group.nick) msgs
                 |> div [ class "group-messages" ]
     in
         div [ class "group" ]
