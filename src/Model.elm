@@ -24,7 +24,7 @@ serverBufferName =
     ":server"
 
 
-type alias ServerMetaData =
+type alias ServerMetadata =
     { proxyHost : String
     , proxyPass : String
     , server : String
@@ -38,7 +38,7 @@ type alias ServerMetaData =
 
 type alias ServerInfo =
     { socket : String
-    , meta : ServerMetaData
+    , meta : ServerMetadata
     , pass : Maybe String
     , buffers : Dict BufferName BufferInfo
     }
@@ -93,13 +93,13 @@ type alias Model =
     , current : Maybe ServerBuffer
     , inputLine : String
     , currentTime : Time
-    , newServerForm : Maybe (Form () ServerMetaData)
+    , newServerForm : Maybe (Form () ServerMetadata)
     }
 
 
-newServerValidation : Validation () ServerMetaData
+newServerValidation : Validation () ServerMetadata
 newServerValidation =
-    map8 ServerMetaData
+    map8 ServerMetadata
         (field "proxyHost" string)
         (field "proxyPass" string)
         (field "server" string)

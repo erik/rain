@@ -18,7 +18,7 @@ type StoreServerAction
 
 
 type Msg
-    = AddServer ServerMetaData
+    = AddServer ServerMetadata
     | AddScrollback ServerInfo BufferName Line
     | AddLine ServerInfo BufferName Line
     | ClearBuffer ServerInfo BufferName

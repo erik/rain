@@ -85,7 +85,7 @@ viewHelpText =
             ]
 
 
-viewForm : Form () ServerMetaData -> Html Form.Msg
+viewForm : Form () ServerMetadata -> Html Form.Msg
 viewForm form =
     let
         inputs =
@@ -253,14 +253,14 @@ viewTopic buffer =
         div [ id "buffer-topic" ] (linkifyLine topic)
 
 
-viewBufferMessages : ServerMetaData -> Buffer -> Html Msg
+viewBufferMessages : ServerMetadata -> Buffer -> Html Msg
 viewBufferMessages serverMeta buffer =
     buffer
         |> List.map (viewLineGroup serverMeta)
         |> div [ id "buffer-messages" ]
 
 
-viewLineGroup : ServerMetaData -> LineGroup -> Html Msg
+viewLineGroup : ServerMetadata -> LineGroup -> Html Msg
 viewLineGroup serverMeta group =
     let
         timeStr =
