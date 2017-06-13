@@ -287,7 +287,7 @@ viewLineGroup serverMeta group =
                 ]
 
         formatMessages msgs =
-            List.map (formatLine serverMeta.name) msgs
+            List.map (formatLine serverMeta.nick) msgs
                 |> div [ class "group-messages" ]
     in
         div [ class "group" ]
