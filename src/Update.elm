@@ -163,6 +163,10 @@ update msg model =
                         else
                             [ SendRawLine serverInfo rawLine
                             , AddLine serverInfo target line
+                            , if serverInfo.meta.saveScrollback then
+                                AddScrollback serverInfo target line
+                              else
+                                Noop
                             ]
 
                 ctcp target command msg =
