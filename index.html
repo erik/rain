@@ -54,6 +54,9 @@
 
      let notif = new Notification(title, {body: message})
 
+     // TODO: Should select the tab that generated this notification
+     notif.onclick = function() { window.focus() }
+
      setTimeout(notif.close.bind(notif), 5000)
  })
 
