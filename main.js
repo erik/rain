@@ -11077,7 +11077,7 @@ var _user$project$Model$setBuffer = F3(
 		return _elm_lang$core$Native_Utils.update(
 			model,
 			{
-				servers: A3(_elm_lang$core$Dict$insert, serverInfo.name, serverInfo_, model.servers)
+				servers: A3(_elm_lang$core$Dict$insert, serverInfo.meta.name, serverInfo_, model.servers)
 			});
 	});
 var _user$project$Model$getServer = F2(
@@ -11123,30 +11123,13 @@ var _user$project$Model$getActiveServer = function (model) {
 };
 var _user$project$Model$initialModel = {servers: _elm_lang$core$Dict$empty, current: _elm_lang$core$Maybe$Nothing, inputLine: '', currentTime: 0, newServerForm: _elm_lang$core$Maybe$Nothing};
 var _user$project$Model$serverBufferName = ':server';
-var _user$project$Model$newBuffer = function (name) {
-	return {
-		name: name,
-		users: _elm_lang$core$Set$empty,
-		topic: _elm_lang$core$Maybe$Nothing,
-		buffer: {ctor: '[]'},
-		lastChecked: 0,
-		isServer: _elm_lang$core$Native_Utils.eq(name, _user$project$Model$serverBufferName)
-	};
-};
-var _user$project$Model$getOrCreateBuffer = F2(
-	function (serverInfo, bufferName) {
-		return A2(
-			_elm_lang$core$Maybe$withDefault,
-			_user$project$Model$newBuffer(bufferName),
-			A2(_user$project$Model$getBuffer, serverInfo, bufferName));
-	});
-var _user$project$Model$ServerMetaData = F8(
+var _user$project$Model$ServerMetadata = F8(
 	function (a, b, c, d, e, f, g, h) {
 		return {proxyHost: a, proxyPass: b, server: c, port_: d, nick: e, pass: f, name: g, saveScrollback: h};
 	});
 var _user$project$Model$newServerValidation = A9(
 	_etaque$elm_form$Form_Validate$map8,
-	_user$project$Model$ServerMetaData,
+	_user$project$Model$ServerMetadata,
 	A2(_etaque$elm_form$Form_Validate$field, 'proxyHost', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'proxyPass', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'server', _etaque$elm_form$Form_Validate$string),
@@ -11155,9 +11138,9 @@ var _user$project$Model$newServerValidation = A9(
 	A2(_etaque$elm_form$Form_Validate$field, 'pass', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'name', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'saveScrollback', _etaque$elm_form$Form_Validate$bool));
-var _user$project$Model$ServerInfo = F6(
-	function (a, b, c, d, e, f) {
-		return {socket: a, nick: b, pass: c, name: d, meta: e, buffers: f};
+var _user$project$Model$ServerInfo = F4(
+	function (a, b, c, d) {
+		return {socket: a, meta: b, pass: c, buffers: d};
 	});
 var _user$project$Model$Line = F3(
 	function (a, b, c) {
@@ -11178,6 +11161,76 @@ var _user$project$Model$BufferInfo = F6(
 var _user$project$Model$Model = F5(
 	function (a, b, c, d, e) {
 		return {servers: a, current: b, inputLine: c, currentTime: d, newServerForm: e};
+	});
+var _user$project$Model$UsersLoaded = function (a) {
+	return {ctor: 'UsersLoaded', _0: a};
+};
+var _user$project$Model$UsersLoading = function (a) {
+	return {ctor: 'UsersLoading', _0: a};
+};
+var _user$project$Model$newBuffer = function (name) {
+	return {
+		name: name,
+		users: _user$project$Model$UsersLoading(
+			{ctor: '[]'}),
+		topic: _elm_lang$core$Maybe$Nothing,
+		buffer: {ctor: '[]'},
+		lastChecked: 0,
+		isServer: _elm_lang$core$Native_Utils.eq(name, _user$project$Model$serverBufferName)
+	};
+};
+var _user$project$Model$getOrCreateBuffer = F2(
+	function (serverInfo, bufferName) {
+		return A2(
+			_elm_lang$core$Maybe$withDefault,
+			_user$project$Model$newBuffer(bufferName),
+			A2(_user$project$Model$getBuffer, serverInfo, bufferName));
+	});
+var _user$project$Model$addNicks = F2(
+	function (nicks, buf) {
+		var _p5 = buf.users;
+		if (_p5.ctor === 'UsersLoading') {
+			return _elm_lang$core$Native_Utils.update(
+				buf,
+				{
+					users: _user$project$Model$UsersLoading(
+						A2(_elm_lang$core$Basics_ops['++'], _p5._0, nicks))
+				});
+		} else {
+			return _elm_lang$core$Native_Utils.update(
+				buf,
+				{
+					users: _user$project$Model$UsersLoaded(
+						A2(
+							_elm_lang$core$Set$union,
+							_p5._0,
+							_elm_lang$core$Set$fromList(nicks)))
+				});
+		}
+	});
+var _user$project$Model$removeNick = F2(
+	function (nick, buf) {
+		var _p6 = buf.users;
+		if (_p6.ctor === 'UsersLoading') {
+			return _elm_lang$core$Native_Utils.update(
+				buf,
+				{
+					users: _user$project$Model$UsersLoading(
+						A2(
+							_elm_lang$core$List$filter,
+							function (x) {
+								return !_elm_lang$core$Native_Utils.eq(x, nick);
+							},
+							_p6._0))
+				});
+		} else {
+			return _elm_lang$core$Native_Utils.update(
+				buf,
+				{
+					users: _user$project$Model$UsersLoaded(
+						A2(_elm_lang$core$Set$remove, nick, _p6._0))
+				});
+		}
 	});
 
 var _user$project$Irc$parsePrefix = function (prefix) {
@@ -11573,7 +11626,7 @@ var _user$project$Update$update = F2(
 								}
 							}
 						});
-					var info = {socket: socketUrl, nick: _p3.nick, pass: pass, name: _p3.name, meta: _p3, buffers: _elm_lang$core$Dict$empty};
+					var info = {socket: socketUrl, pass: pass, meta: _p3, buffers: _elm_lang$core$Dict$empty};
 					var servers_ = A3(_elm_lang$core$Dict$insert, _p3.name, info, model.servers);
 					return A2(
 						_elm_lang$core$Platform_Cmd_ops['!'],
@@ -11587,7 +11640,7 @@ var _user$project$Update$update = F2(
 						_elm_lang$core$Native_Utils.update(
 							model,
 							{
-								servers: A2(_elm_lang$core$Dict$remove, _p0._0.name, model.servers)
+								servers: A2(_elm_lang$core$Dict$remove, _p0._0.meta.name, model.servers)
 							}),
 						{ctor: '[]'});
 				case 'ConnectIrc':
@@ -11615,7 +11668,7 @@ var _user$project$Update$update = F2(
 									_0: 'CAP END',
 									_1: {
 										ctor: '::',
-										_0: A2(_elm_lang$core$Basics_ops['++'], 'NICK ', _p4.nick),
+										_0: A2(_elm_lang$core$Basics_ops['++'], 'NICK ', _p4.meta.nick),
 										_1: {
 											ctor: '::',
 											_0: A2(
@@ -11623,8 +11676,8 @@ var _user$project$Update$update = F2(
 												'USER ',
 												A2(
 													_elm_lang$core$Basics_ops['++'],
-													_p4.nick,
-													A2(_elm_lang$core$Basics_ops['++'], ' * * :', _p4.nick))),
+													_p4.meta.nick,
+													A2(_elm_lang$core$Basics_ops['++'], ' * * :', _p4.meta.nick))),
 											_1: {ctor: '[]'}
 										}
 									}
@@ -11662,12 +11715,12 @@ var _user$project$Update$update = F2(
 								}
 							}
 						});
-					var isDirectMessage = (!_elm_lang$core$Native_Utils.eq(_p7.nick, _p6.nick)) && (!A2(_elm_lang$core$String$startsWith, '#', _p5));
+					var isDirectMessage = (!_elm_lang$core$Native_Utils.eq(_p7.meta.nick, _p6.nick)) && (!A2(_elm_lang$core$String$startsWith, '#', _p5));
 					var nickRegexp = _elm_lang$core$Regex$regex(
 						A2(
 							_elm_lang$core$Basics_ops['++'],
 							'\\b',
-							A2(_elm_lang$core$Basics_ops['++'], _p7.nick, '\\b')));
+							A2(_elm_lang$core$Basics_ops['++'], _p7.meta.nick, '\\b')));
 					var matchesNick = A2(_elm_lang$core$Regex$contains, nickRegexp, _p6.message);
 					var bufInfo = function (b) {
 						return _elm_lang$core$Native_Utils.update(
@@ -11691,7 +11744,7 @@ var _user$project$Update$update = F2(
 						{
 							ctor: '::',
 							_0: _user$project$Ports$saveScrollback(
-								{ctor: '_Tuple3', _0: _p0._0.name, _1: _p0._1, _2: _p0._2}),
+								{ctor: '_Tuple3', _0: _p0._0.meta.name, _1: _p0._1, _2: _p0._2}),
 							_1: {ctor: '[]'}
 						});
 				case 'ReceiveScrollback':
@@ -11708,21 +11761,21 @@ var _user$project$Update$update = F2(
 							_elm_lang$core$Native_Utils.crash(
 								'Update',
 								{
-									start: {line: 148, column: 21},
-									end: {line: 148, column: 32}
+									start: {line: 146, column: 21},
+									end: {line: 146, column: 32}
 								}),
 							'unknown server',
 							_p9);
 					}
 				case 'SendLine':
-					var _p17 = _p0._0;
-					var _p16 = _p0._2;
-					var _p15 = _p0._1;
+					var _p18 = _p0._0;
+					var _p17 = _p0._2;
+					var _p16 = _p0._1;
 					var addErrorMessage = function (msg) {
 						var line = {ts: model.currentTime, nick: '*error', message: msg};
 						return {
 							ctor: '::',
-							_0: A3(_user$project$Update$AddLine, _p17, _p15.name, line),
+							_0: A3(_user$project$Update$AddLine, _p18, _p16.name, line),
 							_1: {ctor: '[]'}
 						};
 					};
@@ -11770,14 +11823,18 @@ var _user$project$Update$update = F2(
 										}
 									}
 								});
-							var line = {ts: model.currentTime, nick: _p17.nick, message: msg};
-							return _p15.isServer ? addErrorMessage('use /quote to send messages directly to the server') : {
+							var line = {ts: model.currentTime, nick: _p18.meta.nick, message: msg};
+							return _p16.isServer ? addErrorMessage('use /quote to send messages directly to the server') : {
 								ctor: '::',
-								_0: A2(_user$project$Update$SendRawLine, _p17, rawLine),
+								_0: A2(_user$project$Update$SendRawLine, _p18, rawLine),
 								_1: {
 									ctor: '::',
-									_0: A3(_user$project$Update$AddLine, _p17, target, line),
-									_1: {ctor: '[]'}
+									_0: A3(_user$project$Update$AddLine, _p18, target, line),
+									_1: {
+										ctor: '::',
+										_0: _p18.meta.saveScrollback ? A3(_user$project$Update$AddScrollback, _p18, target, line) : _user$project$Update$Noop,
+										_1: {ctor: '[]'}
+									}
 								}
 							};
 						});
@@ -11827,11 +11884,11 @@ var _user$project$Update$update = F2(
 														ctor: '::',
 														_0: A2(
 															_user$project$Update$SendRawLine,
-															_p17,
+															_p18,
 															A2(_elm_lang$core$Basics_ops['++'], 'JOIN ', _p11)),
 														_1: {
 															ctor: '::',
-															_0: A2(_user$project$Update$SelectBuffer, _p17, _p11),
+															_0: A2(_user$project$Update$SelectBuffer, _p18.meta.name, _p11),
 															_1: {ctor: '[]'}
 														}
 													} : addErrorMessage('channel names must begin with #');
@@ -11843,7 +11900,7 @@ var _user$project$Update$update = F2(
 													var _p12 = _p10._1._0;
 													return A2(_elm_lang$core$String$startsWith, '#', _p12) ? addErrorMessage('can only initiate queries with users') : {
 														ctor: '::',
-														_0: A2(_user$project$Update$SelectBuffer, _p17, _p12),
+														_0: A2(_user$project$Update$SelectBuffer, _p18.meta.name, _p12),
 														_1: {ctor: '[]'}
 													};
 												} else {
@@ -11854,7 +11911,7 @@ var _user$project$Update$update = F2(
 													var _v8 = '/part',
 														_v9 = {
 														ctor: '::',
-														_0: _p15.name,
+														_0: _p16.name,
 														_1: {ctor: '[]'}
 													};
 													cmd = _v8;
@@ -11867,11 +11924,11 @@ var _user$project$Update$update = F2(
 															ctor: '::',
 															_0: A2(
 																_user$project$Update$SendRawLine,
-																_p17,
+																_p18,
 																A2(_elm_lang$core$Basics_ops['++'], 'PART ', _p13)),
 															_1: {
 																ctor: '::',
-																_0: A2(_user$project$Update$CloseBuffer, _p17, _p13),
+																_0: A2(_user$project$Update$CloseBuffer, _p18, _p13),
 																_1: {ctor: '[]'}
 															}
 														};
@@ -11883,10 +11940,10 @@ var _user$project$Update$update = F2(
 												if (_p10._1.ctor === '[]') {
 													return {
 														ctor: '::',
-														_0: A2(_user$project$Update$ClearBuffer, _p17, _p15.name),
+														_0: A2(_user$project$Update$ClearBuffer, _p18, _p16.name),
 														_1: {
 															ctor: '::',
-															_0: A2(_user$project$Update$CloseBuffer, _p17, _p15.name),
+															_0: A2(_user$project$Update$CloseBuffer, _p18, _p16.name),
 															_1: {ctor: '[]'}
 														}
 													};
@@ -11897,7 +11954,7 @@ var _user$project$Update$update = F2(
 												if (_p10._1.ctor === '[]') {
 													return {
 														ctor: '::',
-														_0: A2(_user$project$Update$ClearBuffer, _p17, _p15.name),
+														_0: A2(_user$project$Update$ClearBuffer, _p18, _p16.name),
 														_1: {ctor: '[]'}
 													};
 												} else {
@@ -11905,7 +11962,7 @@ var _user$project$Update$update = F2(
 												}
 											case '/me':
 												var msg = A2(_elm_lang$core$String$join, ' ', _p10._1);
-												return A3(ctcp, _p15.name, 'ACTION', msg);
+												return A3(ctcp, _p16.name, 'ACTION', msg);
 											case '/privmsg':
 												if (_p10._1.ctor === '::') {
 													return A2(
@@ -11937,16 +11994,21 @@ var _user$project$Update$update = F2(
 													A2(_elm_lang$core$String$join, ' ', _p10._1));
 											case '/names':
 												if (_p10._1.ctor === '[]') {
-													var nicks = A2(
-														_elm_lang$core$List$take,
-														100,
-														_elm_lang$core$Set$toList(_p15.users));
+													var nickList = function () {
+														var _p14 = _p16.users;
+														if (_p14.ctor === 'UsersLoading') {
+															return _p14._0;
+														} else {
+															return _elm_lang$core$Set$toList(_p14._0);
+														}
+													}();
+													var nicks = A2(_elm_lang$core$List$take, 100, nickList);
 													var message = A2(
 														_elm_lang$core$Basics_ops['++'],
 														{
 															ctor: '::',
 															_0: _elm_lang$core$Basics$toString(
-																_elm_lang$core$Set$size(_p15.users)),
+																_elm_lang$core$List$length(nickList)),
 															_1: {
 																ctor: '::',
 																_0: 'users:',
@@ -11957,11 +12019,11 @@ var _user$project$Update$update = F2(
 													var line = {
 														ts: model.currentTime,
 														message: A2(_elm_lang$core$String$join, ' ', message),
-														nick: _p15.name
+														nick: _p16.name
 													};
 													return {
 														ctor: '::',
-														_0: A3(_user$project$Update$AddLine, _p17, _p15.name, line),
+														_0: A3(_user$project$Update$AddLine, _p18, _p16.name, line),
 														_1: {ctor: '[]'}
 													};
 												} else {
@@ -11973,19 +12035,19 @@ var _user$project$Update$update = F2(
 														case 'save':
 															return {
 																ctor: '::',
-																_0: A2(_user$project$Update$UpdateServerStore, _p17, _user$project$Update$StoreServer),
+																_0: A2(_user$project$Update$UpdateServerStore, _p18, _user$project$Update$StoreServer),
 																_1: {ctor: '[]'}
 															};
 														case 'delete':
 															return {
 																ctor: '::',
-																_0: A2(_user$project$Update$UpdateServerStore, _p17, _user$project$Update$RemoveServer),
+																_0: A2(_user$project$Update$UpdateServerStore, _p18, _user$project$Update$RemoveServer),
 																_1: {ctor: '[]'}
 															};
 														case 'disconnect':
 															return {
 																ctor: '::',
-																_0: _user$project$Update$DisconnectServer(_p17),
+																_0: _user$project$Update$DisconnectServer(_p18),
 																_1: {ctor: '[]'}
 															};
 														default:
@@ -11999,7 +12061,7 @@ var _user$project$Update$update = F2(
 													ctor: '::',
 													_0: A2(
 														_user$project$Update$SendRawLine,
-														_p17,
+														_p18,
 														A2(_elm_lang$core$String$join, ' ', _p10._1)),
 													_1: {ctor: '[]'}
 												};
@@ -12014,18 +12076,18 @@ var _user$project$Update$update = F2(
 							}
 						});
 					var messages = function () {
-						var _p14 = {
+						var _p15 = {
 							ctor: '_Tuple2',
-							_0: A2(_elm_lang$core$String$left, 1, _p16),
-							_1: _elm_lang$core$String$words(_p16)
+							_0: A2(_elm_lang$core$String$left, 1, _p17),
+							_1: _elm_lang$core$String$words(_p17)
 						};
-						if (((_p14.ctor === '_Tuple2') && (_p14._0 === '/')) && (_p14._1.ctor === '::')) {
+						if (((_p15.ctor === '_Tuple2') && (_p15._0 === '/')) && (_p15._1.ctor === '::')) {
 							return A2(
 								slashCommand,
-								commandAlias(_p14._1._0),
-								_p14._1._1);
+								commandAlias(_p15._1._0),
+								_p15._1._1);
 						} else {
-							return A2(privmsg, _p15.name, _p16);
+							return A2(privmsg, _p16.name, _p17);
 						}
 					}();
 					return _elm_lang$core$Native_Utils.eq(model.inputLine, '') ? A2(
@@ -12077,22 +12139,22 @@ var _user$project$Update$update = F2(
 									A2(_user$project$Update$handleCommand, serverInfo, ts),
 									msg));
 						});
-					var _p18 = A2(_user$project$Model$getServer, model, _p0._0);
-					if (_p18.ctor === 'Just') {
+					var _p19 = A2(_user$project$Model$getServer, model, _p0._0);
+					if (_p19.ctor === 'Just') {
 						return A3(
 							_elm_lang$core$List$foldl,
 							F2(
-								function (handler, _p19) {
-									var _p20 = _p19;
-									var _p21 = handler(_p20._0);
-									var model_ = _p21._0;
-									var cmd_ = _p21._1;
+								function (handler, _p20) {
+									var _p21 = _p20;
+									var _p22 = handler(_p21._0);
+									var model_ = _p22._0;
+									var cmd_ = _p22._1;
 									return A2(
 										_elm_lang$core$Platform_Cmd_ops['!'],
 										model_,
 										{
 											ctor: '::',
-											_0: _p20._1,
+											_0: _p21._1,
 											_1: {
 												ctor: '::',
 												_0: cmd_,
@@ -12103,11 +12165,11 @@ var _user$project$Update$update = F2(
 							{ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none},
 							A2(
 								_elm_lang$core$List$map,
-								handleLine(_p18._0),
+								handleLine(_p19._0),
 								A2(
 									_elm_lang$core$List$filter,
-									function (_p22) {
-										return !_elm_lang$core$String$isEmpty(_p22);
+									function (_p23) {
+										return !_elm_lang$core$String$isEmpty(_p23);
 									},
 									_elm_lang$core$String$lines(
 										_elm_lang$core$String$trim(_p0._1)))));
@@ -12115,10 +12177,10 @@ var _user$project$Update$update = F2(
 						return _elm_lang$core$Native_Utils.crashCase(
 							'Update',
 							{
-								start: {line: 324, column: 17},
-								end: {line: 341, column: 67}
+								start: {line: 332, column: 17},
+								end: {line: 349, column: 67}
 							},
-							_p18)('tried to select a bad server');
+							_p19)('tried to select a bad server');
 					}
 				case 'CreateBuffer':
 					var buffer = _user$project$Model$newBuffer(_p0._1);
@@ -12128,29 +12190,40 @@ var _user$project$Update$update = F2(
 						model_,
 						{ctor: '[]'});
 				case 'SelectBuffer':
-					var _p25 = _p0._0;
-					var _p24 = _p0._1;
-					var buffer = function (chan) {
-						return _elm_lang$core$Native_Utils.update(
-							chan,
-							{lastChecked: model.currentTime});
-					}(
-						A2(_user$project$Model$getOrCreateBuffer, _p25, _p24));
-					var model_ = function (model) {
-						return _elm_lang$core$Native_Utils.update(
-							model,
+					var _p28 = _p0._1;
+					var _p25 = A2(_user$project$Model$getServer, model, _p0._0);
+					if (_p25.ctor === 'Just') {
+						var _p26 = _p25._0;
+						var buffer = function (chan) {
+							return _elm_lang$core$Native_Utils.update(
+								chan,
+								{lastChecked: model.currentTime});
+						}(
+							A2(_user$project$Model$getOrCreateBuffer, _p26, _p28));
+						var model_ = function (model) {
+							return _elm_lang$core$Native_Utils.update(
+								model,
+								{
+									current: _elm_lang$core$Maybe$Just(
+										{ctor: '_Tuple2', _0: _p26.meta.name, _1: _p28}),
+									newServerForm: _elm_lang$core$Maybe$Nothing
+								});
+						}(
+							A3(_user$project$Model$setBuffer, _p26, buffer, model));
+						var _v15 = _user$project$Update$RefreshScroll(true),
+							_v16 = model_;
+						msg = _v15;
+						model = _v16;
+						continue update;
+					} else {
+						return _elm_lang$core$Native_Utils.crashCase(
+							'Update',
 							{
-								current: _elm_lang$core$Maybe$Just(
-									{ctor: '_Tuple2', _0: _p25.name, _1: _p24}),
-								newServerForm: _elm_lang$core$Maybe$Nothing
-							});
-					}(
-						A3(_user$project$Model$setBuffer, _p25, buffer, model));
-					var _v13 = _user$project$Update$RefreshScroll(true),
-						_v14 = model_;
-					msg = _v13;
-					model = _v14;
-					continue update;
+								start: {line: 362, column: 13},
+								end: {line: 380, column: 61}
+							},
+							_p25)('tried to select bad server');
+					}
 				case 'RefreshScroll':
 					return {
 						ctor: '_Tuple2',
@@ -12169,33 +12242,39 @@ var _user$project$Update$update = F2(
 					var lastWord = _elm_lang$core$List$head(
 						A2(
 							_elm_lang$core$List$filter,
-							function (_p26) {
-								return !_elm_lang$core$String$isEmpty(_p26);
+							function (_p29) {
+								return !_elm_lang$core$String$isEmpty(_p29);
 							},
 							_elm_lang$core$List$reverse(words)));
 					var completions = A2(
 						_elm_lang$core$Maybe$map,
 						function (w) {
-							return _elm_lang$core$Set$toList(
-								A2(
-									_elm_lang$core$Set$filter,
-									_elm_lang$core$String$startsWith(w),
-									_p0._1.users));
+							return A2(
+								_elm_lang$core$List$filter,
+								_elm_lang$core$String$startsWith(w),
+								function () {
+									var _p30 = _p0._1.users;
+									if (_p30.ctor === 'UsersLoading') {
+										return _p30._0;
+									} else {
+										return _elm_lang$core$Set$toList(_p30._0);
+									}
+								}());
 						},
 						lastWord);
 					var longestCompletion = A2(
 						_elm_lang$core$Maybe$andThen,
 						_elm_lang$core$List$head,
 						A2(_elm_lang$core$Maybe$map, _elm_lang$core$List$sort, completions));
-					var _p27 = longestCompletion;
-					if (_p27.ctor === 'Just') {
-						var _p30 = _p27._0;
+					var _p31 = longestCompletion;
+					if (_p31.ctor === 'Just') {
+						var _p34 = _p31._0;
 						var newInput = function () {
-							var _p28 = words;
-							if ((_p28.ctor === '::') && (_p28._1.ctor === '[]')) {
-								return A2(_elm_lang$core$Basics_ops['++'], _p30, ': ');
+							var _p32 = words;
+							if ((_p32.ctor === '::') && (_p32._1.ctor === '[]')) {
+								return A2(_elm_lang$core$Basics_ops['++'], _p34, ': ');
 							} else {
-								var _p29 = _p28;
+								var _p33 = _p32;
 								return A2(
 									_elm_lang$core$String$join,
 									' ',
@@ -12203,11 +12282,11 @@ var _user$project$Update$update = F2(
 										_elm_lang$core$List$append,
 										A2(
 											_elm_lang$core$List$take,
-											_elm_lang$core$List$length(_p29) - 1,
-											_p29),
+											_elm_lang$core$List$length(_p33) - 1,
+											_p33),
 										{
 											ctor: '::',
-											_0: _p30,
+											_0: _p34,
 											_1: {ctor: '[]'}
 										}));
 							}
@@ -12228,16 +12307,16 @@ var _user$project$Update$update = F2(
 							{ctor: '[]'});
 					}
 				case 'Tick':
-					var _p32 = _p0._0;
+					var _p36 = _p0._0;
 					var model_ = function () {
-						var _p31 = _user$project$Model$getActive(model);
-						if (_p31.ctor === 'Just') {
+						var _p35 = _user$project$Model$getActive(model);
+						if (_p35.ctor === 'Just') {
 							return A3(
 								_user$project$Model$setBuffer,
-								_p31._0._0,
+								_p35._0._0,
 								_elm_lang$core$Native_Utils.update(
-									_p31._0._1,
-									{lastChecked: _p32}),
+									_p35._0._1,
+									{lastChecked: _p36}),
 								model);
 						} else {
 							return model;
@@ -12247,21 +12326,21 @@ var _user$project$Update$update = F2(
 						ctor: '_Tuple2',
 						_0: _elm_lang$core$Native_Utils.update(
 							model_,
-							{currentTime: _p32}),
+							{currentTime: _p36}),
 						_1: _elm_lang$core$Platform_Cmd$none
 					};
 				case 'FormMsg':
-					var _p34 = _p0._0;
+					var _p38 = _p0._0;
 					var form_ = model.newServerForm;
 					var serverMeta = A2(_elm_lang$core$Maybe$andThen, _etaque$elm_form$Form$getOutput, form_);
-					var _p33 = {ctor: '_Tuple2', _0: _p34, _1: serverMeta};
-					if (((_p33.ctor === '_Tuple2') && (_p33._0.ctor === 'Submit')) && (_p33._1.ctor === 'Just')) {
-						var _v19 = _user$project$Update$AddServer(_p33._1._0),
-							_v20 = _elm_lang$core$Native_Utils.update(
+					var _p37 = {ctor: '_Tuple2', _0: _p38, _1: serverMeta};
+					if (((_p37.ctor === '_Tuple2') && (_p37._0.ctor === 'Submit')) && (_p37._1.ctor === 'Just')) {
+						var _v22 = _user$project$Update$AddServer(_p37._1._0),
+							_v23 = _elm_lang$core$Native_Utils.update(
 							model,
 							{newServerForm: _elm_lang$core$Maybe$Nothing});
-						msg = _v19;
-						model = _v20;
+						msg = _v22;
+						model = _v23;
 						continue update;
 					} else {
 						return A2(
@@ -12271,7 +12350,7 @@ var _user$project$Update$update = F2(
 								{
 									newServerForm: A2(
 										_elm_lang$core$Maybe$map,
-										A2(_etaque$elm_form$Form$update, _user$project$Model$newServerValidation, _p34),
+										A2(_etaque$elm_form$Form$update, _user$project$Model$newServerValidation, _p38),
 										form_)
 								}),
 							{ctor: '[]'});
@@ -12290,22 +12369,22 @@ var _user$project$Update$update = F2(
 							}),
 						{ctor: '[]'});
 				case 'ClearBuffer':
-					var _p37 = _p0._0;
-					var _p36 = _p0._1;
-					var _p35 = A2(_user$project$Model$getBuffer, _p37, _p36);
-					if (_p35.ctor === 'Just') {
+					var _p41 = _p0._0;
+					var _p40 = _p0._1;
+					var _p39 = A2(_user$project$Model$getBuffer, _p41, _p40);
+					if (_p39.ctor === 'Just') {
 						var buffer_ = _elm_lang$core$Native_Utils.update(
-							_p35._0,
+							_p39._0,
 							{
 								buffer: {ctor: '[]'}
 							});
 						return A2(
 							_elm_lang$core$Platform_Cmd_ops['!'],
-							A3(_user$project$Model$setBuffer, _p37, buffer_, model),
+							A3(_user$project$Model$setBuffer, _p41, buffer_, model),
 							{
 								ctor: '::',
 								_0: _user$project$Ports$clearScrollback(
-									{ctor: '_Tuple2', _0: _p37.name, _1: _p36}),
+									{ctor: '_Tuple2', _0: _p41.meta.name, _1: _p40}),
 								_1: {ctor: '[]'}
 							});
 					} else {
@@ -12313,32 +12392,32 @@ var _user$project$Update$update = F2(
 							_elm_lang$core$Native_Utils.crash(
 								'Update',
 								{
-									start: {line: 472, column: 21},
-									end: {line: 472, column: 32}
+									start: {line: 490, column: 21},
+									end: {line: 490, column: 32}
 								}),
 							'bad buffer name given?',
-							_p36);
+							_p40);
 					}
 				case 'CloseBuffer':
-					var _p39 = _p0._0;
-					var _p38 = _p0._1;
+					var _p43 = _p0._0;
+					var _p42 = _p0._1;
 					var serverInfo_ = _elm_lang$core$Native_Utils.update(
-						_p39,
+						_p43,
 						{
 							buffers: A2(
 								_elm_lang$core$Dict$remove,
-								_elm_lang$core$String$toLower(_p38),
-								_p39.buffers)
+								_elm_lang$core$String$toLower(_p42),
+								_p43.buffers)
 						});
 					var current = _elm_lang$core$Native_Utils.eq(
 						model.current,
 						_elm_lang$core$Maybe$Just(
-							{ctor: '_Tuple2', _0: _p39.name, _1: _p38})) ? _elm_lang$core$Maybe$Nothing : model.current;
+							{ctor: '_Tuple2', _0: _p43.meta.name, _1: _p42})) ? _elm_lang$core$Maybe$Nothing : model.current;
 					var model_ = _elm_lang$core$Native_Utils.update(
 						model,
 						{
 							current: current,
-							servers: A3(_elm_lang$core$Dict$insert, _p39.name, serverInfo_, model.servers)
+							servers: A3(_elm_lang$core$Dict$insert, _p43.meta.name, serverInfo_, model.servers)
 						});
 					return A2(
 						_elm_lang$core$Platform_Cmd_ops['!'],
@@ -12346,8 +12425,8 @@ var _user$project$Update$update = F2(
 						{ctor: '[]'});
 				case 'UpdateServerStore':
 					var actionStr = function () {
-						var _p40 = _p0._1;
-						if (_p40.ctor === 'StoreServer') {
+						var _p44 = _p0._1;
+						if (_p44.ctor === 'StoreServer') {
 							return 'STORE';
 						} else {
 							return 'REMOVE';
@@ -12365,17 +12444,17 @@ var _user$project$Update$update = F2(
 		}
 	});
 var _user$project$Update$andThen = F2(
-	function (msg, _p41) {
-		var _p42 = _p41;
-		var _p43 = A2(_user$project$Update$update, msg, _p42._0);
-		var newModel = _p43._0;
-		var newCmd = _p43._1;
+	function (msg, _p45) {
+		var _p46 = _p45;
+		var _p47 = A2(_user$project$Update$update, msg, _p46._0);
+		var newModel = _p47._0;
+		var newCmd = _p47._1;
 		return A2(
 			_elm_lang$core$Platform_Cmd_ops['!'],
 			newModel,
 			{
 				ctor: '::',
-				_0: _p42._1,
+				_0: _p46._1,
 				_1: {
 					ctor: '::',
 					_0: newCmd,
@@ -12393,16 +12472,16 @@ var _user$project$Update$batchMessage = F2(
 	});
 var _user$project$Update$handleCommand = F4(
 	function (serverInfo, ts, msg, model) {
-		var _p44 = {ctor: '_Tuple2', _0: msg.command, _1: msg.params};
-		_v24_13:
+		var _p48 = {ctor: '_Tuple2', _0: msg.command, _1: msg.params};
+		_v27_13:
 		do {
-			if (_p44.ctor === '_Tuple2') {
-				switch (_p44._0) {
+			if (_p48.ctor === '_Tuple2') {
+				switch (_p48._0) {
 					case '001':
 						var buffers_ = A2(
 							_elm_lang$core$Dict$map,
 							F2(
-								function (_p45, v) {
+								function (_p49, v) {
 									return _elm_lang$core$Native_Utils.update(
 										v,
 										{
@@ -12418,39 +12497,49 @@ var _user$project$Update$handleCommand = F4(
 								model,
 								{servers: info});
 						}(
-							A3(_elm_lang$core$Dict$insert, serverInfo.name, serverInfo_, model.servers));
+							A3(_elm_lang$core$Dict$insert, serverInfo.meta.name, serverInfo_, model.servers));
 						return A2(
 							_elm_lang$core$Platform_Cmd_ops['!'],
 							model_,
 							{
 								ctor: '::',
-								_0: _user$project$Ports$requestScrollback(serverInfo.name),
+								_0: _user$project$Ports$requestScrollback(serverInfo.meta.name),
 								_1: {ctor: '[]'}
 							});
 					case 'PING':
 						var pong = A2(
 							_elm_lang$core$Basics_ops['++'],
 							'PONG ',
-							_elm_lang$core$String$concat(_p44._1));
+							_elm_lang$core$String$concat(_p48._1));
 						return A2(
 							_user$project$Update$update,
 							A2(_user$project$Update$SendRawLine, serverInfo, pong),
 							model);
 					case 'JOIN':
-						if ((_p44._1.ctor === '::') && (_p44._1._1.ctor === '[]')) {
-							var _p46 = _p44._1._0;
-							var current_ = (_elm_lang$core$Native_Utils.eq(serverInfo.nick, msg.user.nick) && _elm_lang$core$Native_Utils.eq(model.current, _elm_lang$core$Maybe$Nothing)) ? _elm_lang$core$Maybe$Just(
-								{ctor: '_Tuple2', _0: serverInfo.name, _1: _p46}) : model.current;
-							var bufInfo = A2(
-								_elm_lang$core$Maybe$withDefault,
-								_user$project$Model$newBuffer(_p46),
-								A2(_user$project$Model$getBuffer, serverInfo, _p46));
-							var bufInfo_ = _elm_lang$core$Native_Utils.update(
-								bufInfo,
+						if ((_p48._1.ctor === '::') && (_p48._1._1.ctor === '[]')) {
+							var _p50 = _p48._1._0;
+							var buffer = A2(
+								_user$project$Model$addNicks,
 								{
-									users: A2(_elm_lang$core$Set$insert, msg.user.nick, bufInfo.users)
-								});
-							var model_ = A3(_user$project$Model$setBuffer, serverInfo, bufInfo_, model);
+									ctor: '::',
+									_0: msg.user.nick,
+									_1: {ctor: '[]'}
+								},
+								A2(
+									_elm_lang$core$Maybe$withDefault,
+									_user$project$Model$newBuffer(_p50),
+									A2(_user$project$Model$getBuffer, serverInfo, _p50)));
+							var weJoined = _elm_lang$core$Native_Utils.eq(serverInfo.meta.nick, msg.user.nick);
+							var lastChecked = weJoined ? model.currentTime : buffer.lastChecked;
+							var model_ = A3(
+								_user$project$Model$setBuffer,
+								serverInfo,
+								_elm_lang$core$Native_Utils.update(
+									buffer,
+									{lastChecked: lastChecked}),
+								model);
+							var current_ = (weJoined && _elm_lang$core$Native_Utils.eq(model.current, _elm_lang$core$Maybe$Nothing)) ? _elm_lang$core$Maybe$Just(
+								{ctor: '_Tuple2', _0: serverInfo.meta.name, _1: _p50}) : model.current;
 							return A2(
 								_elm_lang$core$Platform_Cmd_ops['!'],
 								_elm_lang$core$Native_Utils.update(
@@ -12458,26 +12547,21 @@ var _user$project$Update$handleCommand = F4(
 									{current: current_}),
 								{ctor: '[]'});
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					case 'PART':
-						if (_p44._1.ctor === '::') {
-							var _p51 = _p44._1._0;
-							var _p47 = A2(_user$project$Model$getBuffer, serverInfo, _p51);
-							if (_p47.ctor === 'Just') {
-								var _p49 = _p47._0;
-								var _p48 = _elm_lang$core$Native_Utils.eq(serverInfo.nick, msg.user.nick) ? {
+						if (_p48._1.ctor === '::') {
+							var _p54 = _p48._1._0;
+							var _p51 = A2(_user$project$Model$getBuffer, serverInfo, _p54);
+							if (_p51.ctor === 'Just') {
+								var _p52 = _elm_lang$core$Native_Utils.eq(serverInfo.meta.nick, msg.user.nick) ? {
 									ctor: '_Tuple2',
 									_0: _elm_lang$core$Maybe$Nothing,
-									_1: A2(_user$project$Update$CloseBuffer, serverInfo, _p51)
+									_1: A2(_user$project$Update$CloseBuffer, serverInfo, _p54)
 								} : {ctor: '_Tuple2', _0: model.current, _1: _user$project$Update$Noop};
-								var current = _p48._0;
-								var cmd = _p48._1;
-								var bufInfo_ = _elm_lang$core$Native_Utils.update(
-									_p49,
-									{
-										users: A2(_elm_lang$core$Set$remove, msg.user.nick, _p49.users)
-									});
+								var current = _p52._0;
+								var cmd = _p52._1;
+								var bufInfo_ = A2(_user$project$Model$removeNick, msg.user.nick, _p51._0);
 								var model_ = A3(_user$project$Model$setBuffer, serverInfo, bufInfo_, model);
 								return A2(
 									_user$project$Update$update,
@@ -12486,17 +12570,17 @@ var _user$project$Update$handleCommand = F4(
 										model_,
 										{current: current}));
 							} else {
-								var _p50 = A2(_elm_lang$core$Debug$log, 'odd: PART for channel we aren\'t in.', _p51);
+								var _p53 = A2(_elm_lang$core$Debug$log, 'odd: PART for channel we aren\'t in.', _p54);
 								return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 							}
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					case 'QUIT':
 						var model_ = _elm_lang$core$Native_Utils.update(
 							model,
 							{
-								servers: A3(_elm_lang$core$Dict$insert, serverInfo.name, serverInfo, model.servers)
+								servers: A3(_elm_lang$core$Dict$insert, serverInfo.meta.name, serverInfo, model.servers)
 							});
 						var serverInfo_ = function (buffers) {
 							return _elm_lang$core$Native_Utils.update(
@@ -12506,31 +12590,27 @@ var _user$project$Update$handleCommand = F4(
 							A2(
 								_elm_lang$core$Dict$map,
 								F2(
-									function (_p52, buf) {
-										return _elm_lang$core$Native_Utils.update(
-											buf,
-											{
-												users: A2(_elm_lang$core$Set$remove, msg.user.nick, buf.users)
-											});
+									function (_p55, buf) {
+										return A2(_user$project$Model$removeNick, msg.user.nick, buf);
 									}),
 								serverInfo.buffers));
 						return {ctor: '_Tuple2', _0: model_, _1: _elm_lang$core$Platform_Cmd$none};
 					case 'PRIVMSG':
-						if (((_p44._1.ctor === '::') && (_p44._1._1.ctor === '::')) && (_p44._1._1._1.ctor === '[]')) {
-							return A6(_user$project$Update$handleMessage, serverInfo, msg.user, _p44._1._0, _p44._1._1._0, ts, model);
+						if (((_p48._1.ctor === '::') && (_p48._1._1.ctor === '::')) && (_p48._1._1._1.ctor === '[]')) {
+							return A6(_user$project$Update$handleMessage, serverInfo, msg.user, _p48._1._0, _p48._1._1._0, ts, model);
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					case 'NOTICE':
-						if (((_p44._1.ctor === '::') && (_p44._1._1.ctor === '::')) && (_p44._1._1._1.ctor === '[]')) {
-							var _p54 = _p44._1._1._0;
+						if (((_p48._1.ctor === '::') && (_p48._1._1.ctor === '::')) && (_p48._1._1._1.ctor === '[]')) {
+							var _p57 = _p48._1._1._0;
 							var formatCtcp = function (msg) {
-								var _p53 = _elm_lang$core$String$words(msg);
-								if ((((_p53.ctor === '::') && (_p53._0 === 'PING')) && (_p53._1.ctor === '::')) && (_p53._1._1.ctor === '[]')) {
+								var _p56 = _elm_lang$core$String$words(msg);
+								if ((((_p56.ctor === '::') && (_p56._0 === 'PING')) && (_p56._1.ctor === '::')) && (_p56._1._1.ctor === '[]')) {
 									var time = A2(
 										_elm_lang$core$Result$withDefault,
 										0,
-										_elm_lang$core$String$toFloat(_p53._1._0));
+										_elm_lang$core$String$toFloat(_p56._1._0));
 									var pingTime = _elm_lang$core$Basics$toString(
 										_elm_lang$core$Time$inSeconds(model.currentTime - time));
 									return A2(
@@ -12541,12 +12621,12 @@ var _user$project$Update$handleCommand = F4(
 									return A2(_elm_lang$core$Basics_ops['++'], 'CTCP:', msg);
 								}
 							};
-							var notice = A2(_elm_lang$core$String$startsWith, '', _p54) ? formatCtcp(
+							var notice = A2(_elm_lang$core$String$startsWith, '', _p57) ? formatCtcp(
 								_elm_lang$core$String$concat(
-									A2(_elm_lang$core$String$split, '', _p54))) : A2(_elm_lang$core$Basics_ops['++'], 'NOTICE: ', _p54);
-							return A6(_user$project$Update$handleMessage, serverInfo, msg.user, _p44._1._0, notice, ts, model);
+									A2(_elm_lang$core$String$split, '', _p57))) : A2(_elm_lang$core$Basics_ops['++'], 'NOTICE: ', _p57);
+							return A6(_user$project$Update$handleMessage, serverInfo, msg.user, _p48._1._0, notice, ts, model);
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					case '306':
 						return A2(
@@ -12554,12 +12634,12 @@ var _user$project$Update$handleCommand = F4(
 							model,
 							{ctor: '[]'});
 					case '332':
-						if ((((_p44._1.ctor === '::') && (_p44._1._1.ctor === '::')) && (_p44._1._1._1.ctor === '::')) && (_p44._1._1._1._1.ctor === '[]')) {
-							var bufInfo = A2(_user$project$Model$getOrCreateBuffer, serverInfo, _p44._1._1._0);
+						if ((((_p48._1.ctor === '::') && (_p48._1._1.ctor === '::')) && (_p48._1._1._1.ctor === '::')) && (_p48._1._1._1._1.ctor === '[]')) {
+							var bufInfo = A2(_user$project$Model$getOrCreateBuffer, serverInfo, _p48._1._1._0);
 							var bufInfo_ = _elm_lang$core$Native_Utils.update(
 								bufInfo,
 								{
-									topic: _elm_lang$core$Maybe$Just(_p44._1._1._1._0)
+									topic: _elm_lang$core$Maybe$Just(_p48._1._1._1._0)
 								});
 							return {
 								ctor: '_Tuple2',
@@ -12567,7 +12647,7 @@ var _user$project$Update$handleCommand = F4(
 								_1: _elm_lang$core$Platform_Cmd$none
 							};
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					case '333':
 						return A2(
@@ -12575,63 +12655,98 @@ var _user$project$Update$handleCommand = F4(
 							model,
 							{ctor: '[]'});
 					case '353':
-						if (((((_p44._1.ctor === '::') && (_p44._1._1.ctor === '::')) && (_p44._1._1._1.ctor === '::')) && (_p44._1._1._1._1.ctor === '::')) && (_p44._1._1._1._1._1.ctor === '[]')) {
-							var bufInfo = A2(_user$project$Model$getOrCreateBuffer, serverInfo, _p44._1._1._1._0);
+						if (((((_p48._1.ctor === '::') && (_p48._1._1.ctor === '::')) && (_p48._1._1._1.ctor === '::')) && (_p48._1._1._1._1.ctor === '::')) && (_p48._1._1._1._1._1.ctor === '[]')) {
 							var specialChars = _elm_lang$core$Regex$regex('[%@~\\+]');
 							var stripSpecial = A3(
 								_elm_lang$core$Regex$replace,
 								_elm_lang$core$Regex$All,
 								specialChars,
-								function (_p55) {
+								function (_p58) {
 									return '';
 								});
-							var userSet = A2(
-								_elm_lang$core$Set$union,
-								bufInfo.users,
-								_elm_lang$core$Set$fromList(
-									_elm_lang$core$String$words(
-										stripSpecial(_p44._1._1._1._1._0))));
-							var bufInfo_ = _elm_lang$core$Native_Utils.update(
-								bufInfo,
-								{users: userSet});
-							var model_ = A3(_user$project$Model$setBuffer, serverInfo, bufInfo_, model);
+							var userList = _elm_lang$core$String$words(
+								stripSpecial(_p48._1._1._1._1._0));
+							var bufInfo = A2(
+								_user$project$Model$addNicks,
+								userList,
+								A2(_user$project$Model$getOrCreateBuffer, serverInfo, _p48._1._1._1._0));
+							var model_ = A3(_user$project$Model$setBuffer, serverInfo, bufInfo, model);
 							return A2(
 								_elm_lang$core$Platform_Cmd_ops['!'],
 								model_,
 								{ctor: '[]'});
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					case '366':
-						return A2(
-							_elm_lang$core$Platform_Cmd_ops['!'],
-							model,
-							{ctor: '[]'});
+						if ((((_p48._1.ctor === '::') && (_p48._1._1.ctor === '::')) && (_p48._1._1._1.ctor === '::')) && (_p48._1._1._1._1.ctor === '[]')) {
+							var _p63 = _p48._1._1._0;
+							var _p59 = A2(_user$project$Model$getBuffer, serverInfo, _p63);
+							if (_p59.ctor === 'Just') {
+								var _p61 = _p59._0;
+								var users = function () {
+									var _p60 = _p61.users;
+									if (_p60.ctor === 'UsersLoading') {
+										return _user$project$Model$UsersLoaded(
+											_elm_lang$core$Set$fromList(_p60._0));
+									} else {
+										return _p60;
+									}
+								}();
+								var model_ = A3(
+									_user$project$Model$setBuffer,
+									serverInfo,
+									_elm_lang$core$Native_Utils.update(
+										_p61,
+										{users: users}),
+									model);
+								return A2(
+									_elm_lang$core$Platform_Cmd_ops['!'],
+									model_,
+									{ctor: '[]'});
+							} else {
+								var _p62 = A2(_elm_lang$core$Debug$log, 'weird: 366 for unknown channel', _p63);
+								return A2(
+									_elm_lang$core$Platform_Cmd_ops['!'],
+									model,
+									{ctor: '[]'});
+							}
+						} else {
+							break _v27_13;
+						}
 					case 'NICK':
-						if ((_p44._1.ctor === '::') && (_p44._1._1.ctor === '[]')) {
-							var server_ = _elm_lang$core$Native_Utils.eq(msg.user.nick, serverInfo.nick) ? _elm_lang$core$Native_Utils.update(
-								serverInfo,
-								{nick: _p44._1._0}) : serverInfo;
+						if ((_p48._1.ctor === '::') && (_p48._1._1.ctor === '[]')) {
+							var myNick = _elm_lang$core$Native_Utils.eq(msg.user.nick, serverInfo.meta.nick) ? _p48._1._0 : serverInfo.meta.nick;
+							var server = function (m) {
+								return function (m) {
+									return _elm_lang$core$Native_Utils.update(
+										serverInfo,
+										{meta: m});
+								}(
+									_elm_lang$core$Native_Utils.update(
+										m,
+										{nick: myNick}));
+							}(serverInfo.meta);
 							var model_ = _elm_lang$core$Native_Utils.update(
 								model,
 								{
-									servers: A3(_elm_lang$core$Dict$insert, serverInfo.name, server_, model.servers)
+									servers: A3(_elm_lang$core$Dict$insert, serverInfo.meta.name, server, model.servers)
 								});
 							return A2(
 								_elm_lang$core$Platform_Cmd_ops['!'],
 								model_,
 								{ctor: '[]'});
 						} else {
-							break _v24_13;
+							break _v27_13;
 						}
 					default:
-						break _v24_13;
+						break _v27_13;
 				}
 			} else {
-				break _v24_13;
+				break _v27_13;
 			}
 		} while(false);
-		var _p56 = A2(_elm_lang$core$Debug$log, 'unknown msg', msg);
+		var _p64 = A2(_elm_lang$core$Debug$log, 'unknown msg', msg);
 		var msgText = A2(_elm_lang$core$String$join, ' ', msg.params);
 		var newLine = {
 			ts: ts,
@@ -12664,13 +12779,13 @@ var _user$project$Update$handleCommand = F4(
 	});
 var _user$project$Update$handleMessage = F6(
 	function (serverInfo, user, target, message, ts, model) {
-		var nick = user.isServer ? serverInfo.name : user.nick;
+		var nick = user.isServer ? serverInfo.meta.name : user.nick;
 		var newLine = {ts: ts, nick: nick, message: message};
 		var target_ = A2(_elm_lang$core$String$startsWith, '#', target) ? target : user.nick;
 		var newMsg = A3(_user$project$Update$AddLine, serverInfo, target_, newLine);
 		var refreshMsg = _elm_lang$core$Native_Utils.eq(
 			_elm_lang$core$Maybe$Just(
-				{ctor: '_Tuple2', _0: serverInfo.name, _1: target_}),
+				{ctor: '_Tuple2', _0: serverInfo.meta.name, _1: target_}),
 			model.current) ? _user$project$Update$RefreshScroll(false) : _user$project$Update$Noop;
 		var scrollbackMsg = ((!user.isServer) && serverInfo.meta.saveScrollback) ? A3(_user$project$Update$AddScrollback, serverInfo, target_, newLine) : _user$project$Update$Noop;
 		return A2(
@@ -12715,7 +12830,7 @@ var _user$project$View$linkifyLine = function (line) {
 		A2(_elm_lang$core$List$map, linkify, words));
 };
 var _user$project$View$formatLine = F2(
-	function (serverInfo, line) {
+	function (nick, line) {
 		var copyText = A2(
 			_elm_lang$html$Html$span,
 			{
@@ -12738,7 +12853,7 @@ var _user$project$View$formatLine = F2(
 				A2(
 					_elm_lang$core$Basics_ops['++'],
 					'\\b',
-					A2(_elm_lang$core$Basics_ops['++'], serverInfo.nick, '\\b'))),
+					A2(_elm_lang$core$Basics_ops['++'], nick, '\\b'))),
 			line.message);
 		var _p0 = function () {
 			var _p1 = A2(
@@ -12800,11 +12915,20 @@ var _user$project$View$formatLine = F2(
 			{ctor: '::', _0: copyText, _1: linkified});
 	});
 var _user$project$View$viewLineGroup = F2(
-	function (serverInfo, group) {
-		var messages = A2(
-			_elm_lang$core$List$map,
-			_user$project$View$formatLine(serverInfo),
-			group.messages);
+	function (serverMeta, group) {
+		var formatMessages = function (msgs) {
+			return A2(
+				_elm_lang$html$Html$div,
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$class('group-messages'),
+					_1: {ctor: '[]'}
+				},
+				A2(
+					_elm_lang$core$List$map,
+					_user$project$View$formatLine(serverMeta.nick),
+					msgs));
+		};
 		var timeStr = A2(
 			_mgold$elm_date_format$Date_Format$format,
 			'%H:%M:%S',
@@ -12855,7 +12979,7 @@ var _user$project$View$viewLineGroup = F2(
 											_0: {
 												ctor: '_Tuple2',
 												_0: 'message-nick-self',
-												_1: _elm_lang$core$Native_Utils.eq(group.nick, serverInfo.nick)
+												_1: _elm_lang$core$Native_Utils.eq(group.nick, serverMeta.nick)
 											},
 											_1: {ctor: '[]'}
 										}
@@ -12872,7 +12996,7 @@ var _user$project$View$viewLineGroup = F2(
 										_1: {
 											ctor: '::',
 											_0: _elm_lang$html$Html_Events$onClick(
-												A2(_user$project$Update$SelectBuffer, serverInfo, group.nick)),
+												A2(_user$project$Update$SelectBuffer, serverMeta.name, group.nick)),
 											_1: {ctor: '[]'}
 										}
 									},
@@ -12899,24 +13023,13 @@ var _user$project$View$viewLineGroup = F2(
 				_0: groupHead,
 				_1: {
 					ctor: '::',
-					_0: A2(
-						_elm_lang$html$Html$div,
-						{
-							ctor: '::',
-							_0: _elm_lang$html$Html_Attributes$class('group-messages'),
-							_1: {ctor: '[]'}
-						},
-						messages),
+					_0: A2(_elm_lang$html$Html_Lazy$lazy, formatMessages, group.messages),
 					_1: {ctor: '[]'}
 				}
 			});
 	});
 var _user$project$View$viewBufferMessages = F2(
-	function (serverInfo, buffer) {
-		var lines = A2(
-			_elm_lang$core$List$map,
-			_user$project$View$viewLineGroup(serverInfo),
-			buffer.buffer);
+	function (serverMeta, buffer) {
 		return A2(
 			_elm_lang$html$Html$div,
 			{
@@ -12924,7 +13037,10 @@ var _user$project$View$viewBufferMessages = F2(
 				_0: _elm_lang$html$Html_Attributes$id('buffer-messages'),
 				_1: {ctor: '[]'}
 			},
-			lines);
+			A2(
+				_elm_lang$core$List$map,
+				_user$project$View$viewLineGroup(serverMeta),
+				buffer));
 	});
 var _user$project$View$viewTopic = function (buffer) {
 	var topic = A2(_elm_lang$core$Maybe$withDefault, '', buffer.topic);
@@ -12955,7 +13071,7 @@ var _user$project$View$onInputKey = F3(
 	});
 var _user$project$View$viewBuffer = F3(
 	function (model, server, buffer) {
-		var bufferName = buffer.isServer ? server.name : buffer.name;
+		var bufferName = buffer.isServer ? server.meta.name : buffer.name;
 		return A2(
 			_elm_lang$html$Html$div,
 			{
@@ -12994,7 +13110,7 @@ var _user$project$View$viewBuffer = F3(
 					}),
 				_1: {
 					ctor: '::',
-					_0: A3(_elm_lang$html$Html_Lazy$lazy2, _user$project$View$viewBufferMessages, server, buffer),
+					_0: A3(_elm_lang$html$Html_Lazy$lazy2, _user$project$View$viewBufferMessages, server.meta, buffer.buffer),
 					_1: {
 						ctor: '::',
 						_0: A2(
@@ -13017,7 +13133,7 @@ var _user$project$View$viewBuffer = F3(
 										_0: _elm_lang$html$Html_Attributes$id('input-line'),
 										_1: {
 											ctor: '::',
-											_0: _elm_lang$html$Html_Attributes$placeholder(server.nick),
+											_0: _elm_lang$html$Html_Attributes$placeholder(server.meta.nick),
 											_1: {
 												ctor: '::',
 												_0: _elm_lang$html$Html_Events$onInput(_user$project$Update$TypeLine),
@@ -13080,13 +13196,13 @@ var _user$project$View$viewBufferList = function (model) {
 			_1: {ctor: '[]'}
 		});
 	var viewBufInfo = F2(
-		function (serverInfo, bufInfo) {
+		function (serverName, bufInfo) {
 			return A2(
 				_elm_lang$html$Html$li,
 				{
 					ctor: '::',
 					_0: _elm_lang$html$Html_Events$onClick(
-						A2(_user$project$Update$SelectBuffer, serverInfo, bufInfo.name)),
+						A2(_user$project$Update$SelectBuffer, serverName, bufInfo.name)),
 					_1: {
 						ctor: '::',
 						_0: _elm_lang$html$Html_Attributes$classList(
@@ -13119,7 +13235,7 @@ var _user$project$View$viewBufferList = function (model) {
 	var bufferList = function (serverInfo) {
 		return A2(
 			_elm_lang$core$List$map,
-			viewBufInfo(serverInfo),
+			viewBufInfo(serverInfo.meta.name),
 			A2(
 				_elm_lang$core$List$sortBy,
 				function (_) {
@@ -13136,7 +13252,7 @@ var _user$project$View$viewBufferList = function (model) {
 		_elm_lang$core$List$map,
 		function (_p2) {
 			var _p3 = _p2;
-			var _p4 = _p3._1;
+			var _p4 = _p3._0;
 			return A2(
 				_elm_lang$html$Html$div,
 				{ctor: '[]'},
@@ -13167,7 +13283,7 @@ var _user$project$View$viewBufferList = function (model) {
 									},
 									{
 										ctor: '::',
-										_0: _elm_lang$html$Html$text(_p3._0),
+										_0: _elm_lang$html$Html$text(_p4),
 										_1: {ctor: '[]'}
 									}),
 								_1: {
@@ -13175,7 +13291,7 @@ var _user$project$View$viewBufferList = function (model) {
 									_0: A2(
 										_elm_lang$html$Html$ul,
 										{ctor: '[]'},
-										bufferList(_p4)),
+										bufferList(_p3._1)),
 									_1: {ctor: '[]'}
 								}
 							}),
@@ -13602,7 +13718,7 @@ var _user$project$Main$subscriptions = function (model) {
 			return A2(
 				_elm_lang$websocket$WebSocket$listen,
 				info.socket,
-				_user$project$Update$ReceiveRawLine(info.name));
+				_user$project$Update$ReceiveRawLine(info.meta.name));
 		},
 		_elm_lang$core$Dict$values(model.servers));
 	return _elm_lang$core$Platform_Sub$batch(
