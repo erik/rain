@@ -24,7 +24,7 @@ serverBufferName =
     ":server"
 
 
-type alias ServerMetaData =
+type alias ServerMetadata =
     { proxyHost : String
     , proxyPass : String
     , server : String
@@ -38,10 +38,8 @@ type alias ServerMetaData =
 
 type alias ServerInfo =
     { socket : String
-    , nick : String
+    , meta : ServerMetadata
     , pass : Maybe String
-    , name : String
-    , meta : ServerMetaData
     , buffers : Dict BufferName BufferInfo
     }
 
@@ -72,9 +70,17 @@ type alias UserInfo =
     }
 
 
+{-| to avoid choking on large channels, we wait to uniquify the user names
+until we receive the "end of names list" message from the server.
+-}
+type UserList
+    = UsersLoading (List String)
+    | UsersLoaded (Set String)
+
+
 type alias BufferInfo =
     { name : String
-    , users : Set String
+    , users : UserList
     , topic : Maybe String
     , buffer : Buffer
     , lastChecked : Time.Time
@@ -87,13 +93,13 @@ type alias Model =
     , current : Maybe ServerBuffer
     , inputLine : String
     , currentTime : Time
-    , newServerForm : Maybe (Form () ServerMetaData)
+    , newServerForm : Maybe (Form () ServerMetadata)
     }
 
 
-newServerValidation : Validation () ServerMetaData
+newServerValidation : Validation () ServerMetadata
 newServerValidation =
-    map8 ServerMetaData
+    map8 ServerMetadata
         (field "proxyHost" string)
         (field "proxyPass" string)
         (field "server" string)
@@ -117,12 +123,32 @@ initialModel =
 newBuffer : String -> BufferInfo
 newBuffer name =
     { name = name
-    , users = Set.empty
+    , users = UsersLoading []
     , topic = Nothing
     , buffer = []
     , lastChecked = 0
     , isServer = name == serverBufferName
     }
+
+
+addNicks : List String -> BufferInfo -> BufferInfo
+addNicks nicks buf =
+    case buf.users of
+        UsersLoading list ->
+            { buf | users = UsersLoading (list ++ nicks) }
+
+        UsersLoaded set ->
+            { buf | users = UsersLoaded (Set.fromList nicks |> Set.union set) }
+
+
+removeNick : String -> BufferInfo -> BufferInfo
+removeNick nick buf =
+    case buf.users of
+        UsersLoading list ->
+            { buf | users = UsersLoading (List.filter (\x -> not (x == nick)) list) }
+
+        UsersLoaded set ->
+            { buf | users = UsersLoaded (Set.remove nick set) }
 
 
 getServer : Model -> ServerName -> Maybe ServerInfo
@@ -143,7 +169,7 @@ setBuffer serverInfo buf model =
             in
                 { serverInfo | buffers = buffers }
     in
-        { model | servers = Dict.insert serverInfo.name serverInfo_ model.servers }
+        { model | servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers }
 
 
 getBuffer : ServerInfo -> BufferName -> Maybe BufferInfo

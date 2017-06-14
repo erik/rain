@@ -1,12 +1,12 @@
 port module Ports exposing (..)
 
-import Model exposing (BufferName, ServerMetaData, ServerName, Line)
+import Model exposing (BufferName, ServerMetadata, ServerName, Line)
 
 
 -- Input ports
 
 
-port addSavedServer : (ServerMetaData -> msg) -> Sub msg
+port addSavedServer : (ServerMetadata -> msg) -> Sub msg
 
 
 port receiveScrollback : (( ServerName, BufferName, Line ) -> msg) -> Sub msg
@@ -16,7 +16,7 @@ port receiveScrollback : (( ServerName, BufferName, Line ) -> msg) -> Sub msg
 -- Output ports
 
 
-port modifyServerStore : ( ServerMetaData, String ) -> Cmd msg
+port modifyServerStore : ( ServerMetadata, String ) -> Cmd msg
 
 
 port clearScrollback : ( ServerName, BufferName ) -> Cmd msg
