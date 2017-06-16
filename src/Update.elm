@@ -399,42 +399,43 @@ update msg model =
                         word ->
                             word
 
-                completions =
+                completion =
                     lastWord
                         |> Maybe.map
                             (\w ->
                                 (case bufferInfo.users of
                                     UsersLoading list ->
-                                        list
+                                        list |> List.filter (String.startsWith w)
 
                                     UsersLoaded set ->
-                                        Set.toList set
+                                        set
+                                            |> Set.filter (String.startsWith w)
+                                            |> Set.toList
                                 )
-                                    |> List.filter (String.startsWith w)
                             )
-
-                longestCompletion =
-                    completions
+                        -- Sort completions alphabetically.
                         |> Maybe.map List.sort
+                        -- And just take the first.
                         |> Maybe.andThen List.head
+
+                inputLine =
+                    case completion of
+                        Just completion ->
+                            case words of
+                                -- if we're tab completing the first word,
+                                -- assume this is a nick highlight.
+                                [ nick ] ->
+                                    completion ++ ": "
+
+                                words ->
+                                    [ completion ]
+                                        |> List.append (List.take ((List.length words) - 1) words)
+                                        |> String.join " "
+
+                        Nothing ->
+                            model.inputLine
             in
-                case longestCompletion of
-                    Just completion ->
-                        let
-                            newInput =
-                                case words of
-                                    [ word ] ->
-                                        completion ++ ": "
-
-                                    words ->
-                                        [ completion ]
-                                            |> List.append (List.take ((List.length words) - 1) words)
-                                            |> String.join " "
-                        in
-                            ( { model | inputLine = String.trimLeft newInput }, Cmd.none )
-
-                    Nothing ->
-                        model ! []
+                { model | inputLine = inputLine } ! []
 
         Tick time ->
             let
