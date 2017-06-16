@@ -391,11 +391,14 @@ update msg model =
                     String.split " " model.inputLine
 
                 lastWord =
-                    List.reverse words
-                        |> List.filter (not << String.isEmpty)
-                        |> List.head
+                    -- We want to tab complete "something|", not "something |".
+                    case List.reverse words |> List.head of
+                        Just "" ->
+                            Nothing
 
-                -- TODO: should also complete /privmsg etc
+                        word ->
+                            word
+
                 completions =
                     lastWord
                         |> Maybe.map
