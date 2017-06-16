@@ -3,7 +3,6 @@ module Model exposing (..)
 import Dict exposing (Dict)
 import Form exposing (Form)
 import Form.Validate as Validate exposing (..)
-import Set exposing (Set)
 import Time exposing (Time)
 
 
@@ -72,10 +71,13 @@ type alias UserInfo =
 
 {-| to avoid choking on large channels, we wait to uniquify the user names
 until we receive the "end of names list" message from the server.
+
+UsersLoaded is nick => last message
+
 -}
 type UserList
     = UsersLoading (List String)
-    | UsersLoaded (Set String)
+    | UsersLoaded (Dict String Time.Time)
 
 
 type alias BufferInfo =
@@ -131,6 +133,16 @@ newBuffer name =
     }
 
 
+setNickTimestamp : String -> Time.Time -> BufferInfo -> BufferInfo
+setNickTimestamp nick ts buf =
+    case buf.users of
+        UsersLoading list ->
+            buf
+
+        UsersLoaded set ->
+            { buf | users = UsersLoaded (Dict.insert nick ts set) }
+
+
 addNicks : List String -> BufferInfo -> BufferInfo
 addNicks nicks buf =
     case buf.users of
@@ -138,7 +150,14 @@ addNicks nicks buf =
             { buf | users = UsersLoading (list ++ nicks) }
 
         UsersLoaded set ->
-            { buf | users = UsersLoaded (Set.fromList nicks |> Set.union set) }
+            let
+                users =
+                    nicks
+                        |> List.map (\nick -> ( nick, 0 ))
+                        |> Dict.fromList
+                        |> Dict.union set
+            in
+                { buf | users = UsersLoaded users }
 
 
 removeNick : String -> BufferInfo -> BufferInfo
@@ -148,7 +167,7 @@ removeNick nick buf =
             { buf | users = UsersLoading (List.filter (\x -> not (x == nick)) list) }
 
         UsersLoaded set ->
-            { buf | users = UsersLoaded (Set.remove nick set) }
+            { buf | users = UsersLoaded (Dict.remove nick set) }
 
 
 getServer : Model -> ServerName -> Maybe ServerInfo

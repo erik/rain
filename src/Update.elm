@@ -7,7 +7,6 @@ import Irc
 import Model exposing (..)
 import Ports
 import Regex
-import Set exposing (Set)
 import Time exposing (Time)
 import WebSocket
 
@@ -20,7 +19,7 @@ type StoreServerAction
 type Msg
     = AddServer ServerMetadata
     | AddScrollback ServerInfo BufferName Line
-    | AddLine ServerInfo BufferName Line
+    | AddLine ServerName BufferName Line
     | ClearBuffer ServerInfo BufferName
     | CloseBuffer ServerInfo BufferName
     | ConnectIrc ServerInfo
@@ -28,7 +27,6 @@ type Msg
     | DisconnectServer ServerInfo
     | FormMsg Form.Msg
     | ReceiveRawLine ServerName String
-    | ReceiveScrollback ServerName BufferName Line
     | RefreshScroll Bool
     | SelectBuffer ServerName BufferName
     | SendLine ServerInfo BufferInfo String
@@ -39,6 +37,7 @@ type Msg
     | Tick Time
     | TypeLine String
     | UpdateServerStore ServerInfo StoreServerAction
+    | MultiMsg (List Msg)
     | Noop
 
 
@@ -104,46 +103,43 @@ update msg model =
                     |> List.map (SendRawLine server)
                     |> List.foldr (andThen) ( model, Cmd.none )
 
-        AddLine serverInfo bufferName line ->
-            let
-                bufInfo =
-                    getOrCreateBuffer serverInfo bufferName
-                        |> \b -> { b | buffer = appendLine b.buffer line }
+        AddLine serverName bufferName line ->
+            case getServer model serverName of
+                Just serverInfo ->
+                    let
+                        bufInfo =
+                            getOrCreateBuffer serverInfo bufferName
+                                |> \b -> { b | buffer = appendLine b.buffer line }
 
-                model_ =
-                    setBuffer serverInfo bufInfo model
+                        model_ =
+                            setBuffer serverInfo bufInfo model
 
-                nickRegexp =
-                    Regex.regex ("\\b" ++ serverInfo.meta.nick ++ "\\b")
+                        nickRegexp =
+                            Regex.regex ("\\b" ++ serverInfo.meta.nick ++ "\\b")
 
-                matchesNick =
-                    Regex.contains nickRegexp line.message
+                        matchesNick =
+                            Regex.contains nickRegexp line.message
 
-                isDirectMessage =
-                    (serverInfo.meta.nick /= line.nick)
-                        && (not (String.startsWith "#" bufferName))
+                        isDirectMessage =
+                            (serverInfo.meta.nick /= line.nick)
+                                && (not (String.startsWith "#" bufferName))
 
-                body =
-                    String.concat [ "<", line.nick, ">: ", line.message ]
+                        body =
+                            String.concat [ "<", line.nick, ">: ", line.message ]
 
-                cmd =
-                    if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
-                        SendNotification bufInfo.name body
-                    else
-                        Noop
-            in
-                update cmd model_
+                        cmd =
+                            if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
+                                SendNotification bufInfo.name body
+                            else
+                                Noop
+                    in
+                        update cmd model_
+
+                Nothing ->
+                    Debug.crash "got bad server name"
 
         AddScrollback serverInfo bufferName line ->
             model ! [ Ports.saveScrollback ( serverInfo.meta.name, bufferName, line ) ]
-
-        ReceiveScrollback serverName bufferName line ->
-            case getServer model serverName of
-                Just serverInfo ->
-                    update (AddLine serverInfo bufferName line) model
-
-                _ ->
-                    Debug.crash "unknown server" serverName
 
         SendLine serverInfo bufInfo line ->
             let
@@ -162,7 +158,7 @@ update msg model =
                             addErrorMessage "use /quote to send messages directly to the server"
                         else
                             [ SendRawLine serverInfo rawLine
-                            , AddLine serverInfo target line
+                            , AddLine serverInfo.meta.name target line
                             , if serverInfo.meta.saveScrollback then
                                 AddScrollback serverInfo target line
                               else
@@ -195,7 +191,7 @@ update msg model =
                             , message = msg
                             }
                     in
-                        [ AddLine serverInfo bufInfo.name line ]
+                        [ AddLine serverInfo.meta.name bufInfo.name line ]
 
                 slashCommand cmd params =
                     case ( String.toLower cmd, params ) of
@@ -256,7 +252,8 @@ update msg model =
                                             list
 
                                         UsersLoaded set ->
-                                            Set.toList set
+                                            Dict.toList set
+                                                |> List.map (Tuple.first)
 
                                 nicks =
                                     List.take 100 nickList
@@ -271,7 +268,7 @@ update msg model =
                                     , nick = bufInfo.name
                                     }
                             in
-                                [ AddLine serverInfo bufInfo.name line ]
+                                [ AddLine serverInfo.meta.name bufInfo.name line ]
 
                         ( "/server", [ "save" ] ) ->
                             [ UpdateServerStore serverInfo StoreServer ]
@@ -310,8 +307,8 @@ update msg model =
             ( model, WebSocket.send serverInfo.socket line )
 
         ReceiveRawLine serverName line ->
-            let
-                handleLine serverInfo line =
+            case getServer model serverName of
+                Just serverInfo ->
                     let
                         msg =
                             Irc.splitMessage line
@@ -323,30 +320,14 @@ update msg model =
                                 |> Maybe.withDefault model.currentTime
                     in
                         if line == "AUTHENTICATE" then
-                            update (ConnectIrc serverInfo)
+                            update (ConnectIrc serverInfo) model
                         else
                             msg
-                                |> Maybe.map (handleCommand serverInfo ts)
-                                |> Maybe.withDefault (\model -> ( model, Cmd.none ))
-            in
-                case getServer model serverName of
-                    Just serverInfo ->
-                        String.trim line
-                            |> String.lines
-                            |> List.filter (not << String.isEmpty)
-                            |> List.map (handleLine serverInfo)
-                            |> List.foldl
-                                (\handler ( model, cmd ) ->
-                                    let
-                                        ( model_, cmd_ ) =
-                                            handler model
-                                    in
-                                        model_ ! [ cmd, cmd_ ]
-                                )
-                                ( model, Cmd.none )
+                                |> Maybe.map (\m -> handleCommand serverInfo ts m model)
+                                |> Maybe.withDefault ( model, Cmd.none )
 
-                    _ ->
-                        Debug.crash "tried to select a bad server"
+                _ ->
+                    Debug.crash "received line to unknown server"
 
         CreateBuffer serverInfo bufferName ->
             let
@@ -401,22 +382,25 @@ update msg model =
                         word ->
                             word
 
+                -- If this gets called while nicks are still
+                -- loading, just sort alphabetically,
+                -- otherwise choose the most recent user.
                 completion =
                     lastWord
                         |> Maybe.map
-                            (\w ->
-                                (case bufferInfo.users of
+                            (\word ->
+                                case bufferInfo.users of
                                     UsersLoading list ->
-                                        list |> List.filter (String.startsWith w)
+                                        List.filter (String.startsWith word) list
+                                            |> List.sort
 
                                     UsersLoaded set ->
                                         set
-                                            |> Set.filter (String.startsWith w)
-                                            |> Set.toList
-                                )
+                                            |> Dict.filter (\nick _ -> String.startsWith word nick)
+                                            |> Dict.toList
+                                            |> List.sortBy (\( nick, lastMessage ) -> -lastMessage)
+                                            |> List.map (Tuple.first)
                             )
-                        -- Sort completions alphabetically.
-                        |> Maybe.map List.sort
                         -- And just take the first.
                         |> Maybe.andThen List.head
 
@@ -526,6 +510,9 @@ update msg model =
             in
                 ( model, Ports.modifyServerStore ( serverInfo.meta, actionStr ) )
 
+        MultiMsg msgs ->
+            batchMessage msgs model
+
         Noop ->
             ( model, Cmd.none )
 
@@ -565,7 +552,7 @@ handleMessage serverInfo user target message ts model =
             { ts = ts, nick = nick, message = message }
 
         newMsg =
-            AddLine serverInfo target_ newLine
+            AddLine serverInfo.meta.name target_ newLine
 
         refreshMsg =
             if Just ( serverInfo.meta.name, target_ ) == model.current then
@@ -578,10 +565,17 @@ handleMessage serverInfo user target message ts model =
                 AddScrollback serverInfo target_ newLine
             else
                 Noop
+
+        model_ =
+            if not user.isServer then
+                getBuffer serverInfo target
+                    |> Maybe.map (setNickTimestamp nick ts)
+                    |> Maybe.map (\buf -> setBuffer serverInfo buf model)
+                    |> Maybe.withDefault model
+            else
+                model
     in
-        update newMsg model
-            |> andThen refreshMsg
-            |> andThen scrollbackMsg
+        batchMessage [ newMsg, refreshMsg, scrollbackMsg ] model_
 
 
 handleCommand : ServerInfo -> Time.Time -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
@@ -758,7 +752,10 @@ handleCommand serverInfo ts msg model =
                         users =
                             case bufInfo.users of
                                 UsersLoading list ->
-                                    UsersLoaded (Set.fromList list)
+                                    list
+                                        |> List.map (\nick -> ( nick, 0 ))
+                                        |> Dict.fromList
+                                        |> UsersLoaded
 
                                 set ->
                                     set
@@ -810,6 +807,6 @@ handleCommand serverInfo ts msg model =
             in
                 model
                     |> batchMessage
-                        [ AddLine serverInfo serverBufferName newLine
+                        [ AddLine serverInfo.meta.name serverBufferName newLine
                         , RefreshScroll False
                         ]

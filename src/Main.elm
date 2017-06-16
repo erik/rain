@@ -34,13 +34,24 @@ subscriptions model =
                 |> Dict.values
                 |> List.map
                     (\info ->
-                        WebSocket.listen info.socket (ReceiveRawLine info.meta.name)
+                        WebSocket.listen info.socket
+                            (\lines ->
+                                lines
+                                    |> String.trim
+                                    |> String.lines
+                                    |> List.filter (not << String.isEmpty)
+                                    |> List.map (ReceiveRawLine info.meta.name)
+                                    |> MultiMsg
+                            )
                     )
     in
         Sub.batch
             (List.append
                 [ Ports.addSavedServer AddServer
-                , Ports.receiveScrollback (\( s, c, l ) -> ReceiveScrollback s c l)
+                , Ports.receiveScrollback
+                    (\( server, chan, line ) ->
+                        AddLine server chan line
+                    )
                 , Time.every Time.second Tick
                 ]
                 recvWs
