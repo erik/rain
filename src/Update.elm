@@ -366,8 +366,6 @@ update msg model =
         SendNotification title message ->
             ( model, Ports.sendNotification ( title, message ) )
 
-        -- TODO: would be good to sort completions by who talked most recently
-        -- TODO: rather than alphabetically
         TabCompleteLine serverInfo bufferInfo ->
             let
                 words =
