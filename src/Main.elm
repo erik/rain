@@ -2,10 +2,10 @@ module Main exposing (..)
 
 import Dict
 import Html exposing (..)
-import Model exposing (Model, initialModel)
+import Model exposing (Model, initialModel, getServer)
 import Ports
 import Time
-import Update exposing (update, Msg(..))
+import Update exposing (update, Msg(..), ServerMsg(..))
 import View exposing (view)
 import WebSocket
 
@@ -50,7 +50,12 @@ subscriptions model =
                 [ Ports.addSavedServer AddServer
                 , Ports.receiveScrollback
                     (\( server, chan, line ) ->
-                        AddLine server chan line
+                        case getServer model server of
+                            Just serverInfo ->
+                                AddLine chan line |> ModifyServer server
+
+                            Nothing ->
+                                Noop
                     )
                 , Time.every Time.second Tick
                 ]

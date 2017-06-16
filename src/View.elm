@@ -12,7 +12,7 @@ import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Json.Decode as Json
 import Model exposing (..)
 import Regex exposing (HowMany(All), regex)
-import Update exposing (Msg(..))
+import Update exposing (Msg(..), ServerMsg(..))
 
 
 view : Model -> Html Msg
@@ -228,10 +228,12 @@ onInputKey model server buffer =
     let
         isKey code =
             if code == enterKey then
-                SendLine server buffer model.inputLine
+                SendLine buffer model.inputLine
+                    |> ModifyServer server.meta.name
                     |> Json.succeed
             else if code == tabKey then
-                TabCompleteLine server buffer
+                TabCompleteLine buffer
+                    |> ModifyServer server.meta.name
                     |> Json.succeed
             else
                 Json.fail "nope"

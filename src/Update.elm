@@ -1,4 +1,4 @@
-module Update exposing (Msg(..), update)
+module Update exposing (Msg(..), ServerMsg(..), update)
 
 import Debug
 import Dict
@@ -11,82 +11,132 @@ import Time exposing (Time)
 import WebSocket
 
 
-type StoreServerAction
-    = StoreServer
+type ServerMsg
+    = AddLine BufferName Line
+    | AddScrollback BufferName Line
+    | ClearBuffer BufferName
+    | CloseBuffer BufferName
+    | ConnectIrc
+    | CreateBuffer BufferName
+    | DisconnectServer
     | RemoveServer
+    | SendLine BufferInfo String
+    | SendRawLine String
+    | StoreServer
+    | TabCompleteLine BufferInfo
 
 
 type Msg
-    = AddServer ServerMetadata
-    | AddScrollback ServerInfo BufferName Line
-    | AddLine ServerName BufferName Line
-    | ClearBuffer ServerInfo BufferName
-    | CloseBuffer ServerInfo BufferName
-    | ConnectIrc ServerInfo
-    | CreateBuffer ServerInfo BufferName
-    | DisconnectServer ServerInfo
+    = ModifyServer ServerName ServerMsg
+    | AddServer ServerMetadata
     | FormMsg Form.Msg
+    | MultiMsg (List Msg)
     | ReceiveRawLine ServerName String
     | RefreshScroll Bool
     | SelectBuffer ServerName BufferName
-    | SendLine ServerInfo BufferInfo String
     | SendNotification String String
-    | SendRawLine ServerInfo String
     | ShowAddServerForm
-    | TabCompleteLine ServerInfo BufferInfo
     | Tick Time
     | TypeLine String
-    | UpdateServerStore ServerInfo StoreServerAction
-    | MultiMsg (List Msg)
     | Noop
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+modifyServer : ServerInfo -> ServerMsg -> Msg
+modifyServer serverInfo msg =
+    ModifyServer serverInfo.meta.name msg
+
+
+updateServer : ServerInfo -> ServerMsg -> Model -> ( Model, Cmd Msg )
+updateServer serverInfo msg model =
     case msg of
-        AddServer meta ->
+        AddLine bufferName line ->
             let
-                -- We send meta.name to differentiate the query
-                -- strings so elm opens up multiple websockets
-                queryString =
-                    [ ( "host", meta.server )
-                    , ( "port", meta.port_ )
-                    , ( "proxyPass", meta.proxyPass )
-                    , ( "name", meta.name )
-                    ]
-                        |> List.map (\( k, v ) -> k ++ "=" ++ v)
-                        |> String.join "&"
+                bufInfo =
+                    getOrCreateBuffer serverInfo bufferName
+                        |> \b -> { b | buffer = appendLine b.buffer line }
 
-                socketUrl =
-                    String.concat [ meta.proxyHost, "?", queryString ]
+                model_ =
+                    setBuffer serverInfo bufInfo model
 
-                pass =
-                    -- TODO: meta.pass should be a maybe in the first place.
-                    if meta.pass == "" then
-                        Nothing
+                nickRegexp =
+                    Regex.regex ("\\b" ++ serverInfo.meta.nick ++ "\\b")
+
+                matchesNick =
+                    Regex.contains nickRegexp line.message
+
+                isDirectMessage =
+                    (serverInfo.meta.nick /= line.nick)
+                        && (not (String.startsWith "#" bufferName))
+
+                body =
+                    String.concat [ "<", line.nick, ">: ", line.message ]
+
+                cmd =
+                    if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
+                        SendNotification bufInfo.name body
                     else
-                        Just meta.pass
-
-                info =
-                    { socket = socketUrl
-                    , pass = pass
-                    , meta = meta
-                    , buffers = Dict.empty
-                    }
-
-                servers_ =
-                    model.servers
-                        |> Dict.insert meta.name info
+                        Noop
             in
-                { model | servers = servers_ } ! []
+                update cmd model_
 
-        DisconnectServer serverInfo ->
+        AddScrollback bufferName line ->
+            model ! [ Ports.saveScrollback ( serverInfo.meta.name, bufferName, line ) ]
+
+        DisconnectServer ->
             { model | servers = Dict.remove serverInfo.meta.name model.servers } ! []
 
-        ConnectIrc server ->
+        CreateBuffer bufferName ->
+            let
+                buffer =
+                    Model.newBuffer bufferName
+
+                model_ =
+                    setBuffer serverInfo buffer model
+            in
+                model_ ! []
+
+        ClearBuffer bufferName ->
+            case getBuffer serverInfo bufferName of
+                Just buffer ->
+                    let
+                        buffer_ =
+                            { buffer | buffer = [] }
+                    in
+                        (setBuffer serverInfo buffer_ model)
+                            ! [ Ports.clearScrollback ( serverInfo.meta.name, bufferName ) ]
+
+                Nothing ->
+                    Debug.crash "bad buffer name given?" bufferName
+
+        CloseBuffer bufferName ->
+            let
+                current =
+                    if model.current == Just ( serverInfo.meta.name, bufferName ) then
+                        Nothing
+                    else
+                        model.current
+
+                serverInfo_ =
+                    { serverInfo | buffers = Dict.remove (String.toLower bufferName) serverInfo.buffers }
+
+                model_ =
+                    { model
+                        | current = current
+                        , servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers
+                    }
+            in
+                model_ ! []
+
+        StoreServer ->
+            ( model, Ports.modifyServerStore ( serverInfo.meta, "STORE" ) )
+
+        RemoveServer ->
+            ( model, Ports.modifyServerStore ( serverInfo.meta, "REMOVE" ) )
+
+        ConnectIrc ->
             let
                 passMsg =
-                    server.pass
+                    serverInfo.pass
                         |> Maybe.map (\pass -> "PASS " ++ pass)
                         |> Maybe.withDefault ""
 
@@ -95,53 +145,18 @@ update msg model =
                     , "CAP REQ znc.in/server-time-iso"
                     , "CAP REQ server-time"
                     , "CAP END"
-                    , "NICK " ++ server.meta.nick
-                    , "USER " ++ server.meta.nick ++ " * * :" ++ server.meta.nick
+                    , "NICK " ++ serverInfo.meta.nick
+                    , "USER " ++ serverInfo.meta.nick ++ " * * :" ++ serverInfo.meta.nick
                     ]
             in
                 lines
-                    |> List.map (SendRawLine server)
-                    |> List.foldr (andThen) ( model, Cmd.none )
+                    |> List.map (\line -> modifyServer serverInfo (SendRawLine line))
+                    |> flip batchMessage model
 
-        AddLine serverName bufferName line ->
-            case getServer model serverName of
-                Just serverInfo ->
-                    let
-                        bufInfo =
-                            getOrCreateBuffer serverInfo bufferName
-                                |> \b -> { b | buffer = appendLine b.buffer line }
+        SendRawLine line ->
+            ( model, WebSocket.send serverInfo.socket line )
 
-                        model_ =
-                            setBuffer serverInfo bufInfo model
-
-                        nickRegexp =
-                            Regex.regex ("\\b" ++ serverInfo.meta.nick ++ "\\b")
-
-                        matchesNick =
-                            Regex.contains nickRegexp line.message
-
-                        isDirectMessage =
-                            (serverInfo.meta.nick /= line.nick)
-                                && (not (String.startsWith "#" bufferName))
-
-                        body =
-                            String.concat [ "<", line.nick, ">: ", line.message ]
-
-                        cmd =
-                            if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
-                                SendNotification bufInfo.name body
-                            else
-                                Noop
-                    in
-                        update cmd model_
-
-                Nothing ->
-                    Debug.crash "got bad server name"
-
-        AddScrollback serverInfo bufferName line ->
-            model ! [ Ports.saveScrollback ( serverInfo.meta.name, bufferName, line ) ]
-
-        SendLine serverInfo bufInfo line ->
+        SendLine bufInfo line ->
             let
                 privmsg target msg =
                     let
@@ -157,10 +172,10 @@ update msg model =
                         if bufInfo.isServer then
                             addErrorMessage "use /quote to send messages directly to the server"
                         else
-                            [ SendRawLine serverInfo rawLine
-                            , AddLine serverInfo.meta.name target line
+                            [ SendRawLine rawLine |> modifyServer serverInfo
+                            , AddLine target line |> modifyServer serverInfo
                             , if serverInfo.meta.saveScrollback then
-                                AddScrollback serverInfo target line
+                                AddScrollback target line |> modifyServer serverInfo
                               else
                                 Noop
                             ]
@@ -191,13 +206,13 @@ update msg model =
                             , message = msg
                             }
                     in
-                        [ AddLine serverInfo.meta.name bufInfo.name line ]
+                        [ AddLine bufInfo.name line |> modifyServer serverInfo ]
 
                 slashCommand cmd params =
                     case ( String.toLower cmd, params ) of
                         ( "/join", [ channel ] ) ->
                             if String.startsWith "#" channel then
-                                [ SendRawLine serverInfo ("JOIN " ++ channel)
+                                [ SendRawLine ("JOIN " ++ channel) |> modifyServer serverInfo
                                 , SelectBuffer serverInfo.meta.name channel
                                 ]
                             else
@@ -213,17 +228,17 @@ update msg model =
                             slashCommand "/part" [ bufInfo.name ]
 
                         ( "/part", [ channel ] ) ->
-                            [ SendRawLine serverInfo ("PART " ++ channel)
-                            , CloseBuffer serverInfo channel
+                            [ SendRawLine ("PART " ++ channel) |> modifyServer serverInfo
+                            , CloseBuffer channel |> modifyServer serverInfo
                             ]
 
                         ( "/close", [] ) ->
-                            [ ClearBuffer serverInfo bufInfo.name
-                            , CloseBuffer serverInfo bufInfo.name
+                            [ ClearBuffer bufInfo.name |> modifyServer serverInfo
+                            , CloseBuffer bufInfo.name |> modifyServer serverInfo
                             ]
 
                         ( "/clear", [] ) ->
-                            [ ClearBuffer serverInfo bufInfo.name ]
+                            [ ClearBuffer bufInfo.name |> modifyServer serverInfo ]
 
                         ( "/me", rest ) ->
                             let
@@ -268,19 +283,19 @@ update msg model =
                                     , nick = bufInfo.name
                                     }
                             in
-                                [ AddLine serverInfo.meta.name bufInfo.name line ]
+                                [ AddLine bufInfo.name line |> modifyServer serverInfo ]
 
                         ( "/server", [ "save" ] ) ->
-                            [ UpdateServerStore serverInfo StoreServer ]
+                            [ modifyServer serverInfo StoreServer ]
 
                         ( "/server", [ "delete" ] ) ->
-                            [ UpdateServerStore serverInfo RemoveServer ]
+                            [ modifyServer serverInfo RemoveServer ]
 
                         ( "/server", [ "disconnect" ] ) ->
-                            [ DisconnectServer serverInfo ]
+                            [ modifyServer serverInfo DisconnectServer ]
 
                         ( "/quote", rest ) ->
-                            [ SendRawLine serverInfo (String.join " " rest) ]
+                            [ SendRawLine (String.join " " rest) |> modifyServer serverInfo ]
 
                         _ ->
                             addErrorMessage "unknown command, did you forget to /quote?"
@@ -300,73 +315,7 @@ update msg model =
                         |> batchMessage messages
                         |> andThen (RefreshScroll True)
 
-        TypeLine str ->
-            { model | inputLine = str } ! []
-
-        SendRawLine serverInfo line ->
-            ( model, WebSocket.send serverInfo.socket line )
-
-        ReceiveRawLine serverName line ->
-            case getServer model serverName of
-                Just serverInfo ->
-                    let
-                        msg =
-                            Irc.splitMessage line
-
-                        -- Grab the time out of the message or default to current time.
-                        ts =
-                            msg
-                                |> Maybe.andThen .time
-                                |> Maybe.withDefault model.currentTime
-                    in
-                        if line == "AUTHENTICATE" then
-                            update (ConnectIrc serverInfo) model
-                        else
-                            msg
-                                |> Maybe.map (\m -> handleCommand serverInfo ts m model)
-                                |> Maybe.withDefault ( model, Cmd.none )
-
-                _ ->
-                    Debug.crash "received line to unknown server"
-
-        CreateBuffer serverInfo bufferName ->
-            let
-                buffer =
-                    Model.newBuffer bufferName
-
-                model_ =
-                    setBuffer serverInfo buffer model
-            in
-                model_ ! []
-
-        SelectBuffer serverName bufferName ->
-            case getServer model serverName of
-                Just serverInfo ->
-                    let
-                        buffer =
-                            getOrCreateBuffer serverInfo bufferName
-                                |> \chan -> { chan | lastChecked = model.currentTime }
-
-                        model_ =
-                            setBuffer serverInfo buffer model
-                                |> \model ->
-                                    { model
-                                        | current = Just ( serverInfo.meta.name, bufferName )
-                                        , newServerForm = Nothing
-                                    }
-                    in
-                        update (RefreshScroll True) model_
-
-                Nothing ->
-                    Debug.crash "tried to select bad server"
-
-        RefreshScroll force ->
-            ( model, Ports.refreshScrollPosition force )
-
-        SendNotification title message ->
-            ( model, Ports.sendNotification ( title, message ) )
-
-        TabCompleteLine serverInfo bufferInfo ->
+        TabCompleteLine bufferInfo ->
             let
                 words =
                     String.split " " model.inputLine
@@ -421,6 +370,107 @@ update msg model =
             in
                 { model | inputLine = inputLine } ! []
 
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        ModifyServer serverName msg ->
+            case getServer model serverName of
+                Just serverInfo ->
+                    updateServer serverInfo msg model
+
+                Nothing ->
+                    Debug.crash "unknown server given" ( serverName, msg )
+
+        AddServer meta ->
+            let
+                -- We send meta.name to differentiate the query
+                -- strings so elm opens up multiple websockets
+                queryString =
+                    [ ( "host", meta.server )
+                    , ( "port", meta.port_ )
+                    , ( "proxyPass", meta.proxyPass )
+                    , ( "name", meta.name )
+                    ]
+                        |> List.map (\( k, v ) -> k ++ "=" ++ v)
+                        |> String.join "&"
+
+                socketUrl =
+                    String.concat [ meta.proxyHost, "?", queryString ]
+
+                pass =
+                    -- TODO: meta.pass should be a maybe in the first place.
+                    if meta.pass == "" then
+                        Nothing
+                    else
+                        Just meta.pass
+
+                info =
+                    { socket = socketUrl
+                    , pass = pass
+                    , meta = meta
+                    , buffers = Dict.empty
+                    }
+
+                servers_ =
+                    model.servers
+                        |> Dict.insert meta.name info
+            in
+                { model | servers = servers_ } ! []
+
+        TypeLine str ->
+            { model | inputLine = str } ! []
+
+        ReceiveRawLine serverName line ->
+            case getServer model serverName of
+                Just serverInfo ->
+                    let
+                        msg =
+                            Irc.splitMessage line
+
+                        -- Grab the time out of the message or default to current time.
+                        ts =
+                            msg
+                                |> Maybe.andThen .time
+                                |> Maybe.withDefault model.currentTime
+                    in
+                        if line == "AUTHENTICATE" then
+                            update (modifyServer serverInfo ConnectIrc) model
+                        else
+                            msg
+                                |> Maybe.map (\m -> handleCommand serverInfo ts m model)
+                                |> Maybe.withDefault ( model, Cmd.none )
+
+                _ ->
+                    Debug.crash "received line to unknown server"
+
+        SelectBuffer serverName bufferName ->
+            case getServer model serverName of
+                Just serverInfo ->
+                    let
+                        buffer =
+                            getOrCreateBuffer serverInfo bufferName
+                                |> \chan -> { chan | lastChecked = model.currentTime }
+
+                        model_ =
+                            setBuffer serverInfo buffer model
+                                |> \model ->
+                                    { model
+                                        | current = Just ( serverInfo.meta.name, bufferName )
+                                        , newServerForm = Nothing
+                                    }
+                    in
+                        update (RefreshScroll True) model_
+
+                Nothing ->
+                    Debug.crash "tried to select bad server"
+
+        RefreshScroll force ->
+            ( model, Ports.refreshScrollPosition force )
+
+        SendNotification title message ->
+            ( model, Ports.sendNotification ( title, message ) )
+
         Tick time ->
             let
                 model_ =
@@ -464,50 +514,6 @@ update msg model =
             in
                 { model | newServerForm = Just form } ! []
 
-        ClearBuffer serverInfo bufferName ->
-            case getBuffer serverInfo bufferName of
-                Just buffer ->
-                    let
-                        buffer_ =
-                            { buffer | buffer = [] }
-                    in
-                        (setBuffer serverInfo buffer_ model)
-                            ! [ Ports.clearScrollback ( serverInfo.meta.name, bufferName ) ]
-
-                Nothing ->
-                    Debug.crash "bad buffer name given?" bufferName
-
-        CloseBuffer serverInfo bufferName ->
-            let
-                current =
-                    if model.current == Just ( serverInfo.meta.name, bufferName ) then
-                        Nothing
-                    else
-                        model.current
-
-                serverInfo_ =
-                    { serverInfo | buffers = Dict.remove (String.toLower bufferName) serverInfo.buffers }
-
-                model_ =
-                    { model
-                        | current = current
-                        , servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers
-                    }
-            in
-                model_ ! []
-
-        UpdateServerStore serverInfo action ->
-            let
-                actionStr =
-                    case action of
-                        StoreServer ->
-                            "STORE"
-
-                        RemoveServer ->
-                            "REMOVE"
-            in
-                ( model, Ports.modifyServerStore ( serverInfo.meta, actionStr ) )
-
         MultiMsg msgs ->
             batchMessage msgs model
 
@@ -550,7 +556,7 @@ handleMessage serverInfo user target message ts model =
             { ts = ts, nick = nick, message = message }
 
         newMsg =
-            AddLine serverInfo.meta.name target_ newLine
+            AddLine target_ newLine |> modifyServer serverInfo
 
         refreshMsg =
             if Just ( serverInfo.meta.name, target_ ) == model.current then
@@ -560,7 +566,7 @@ handleMessage serverInfo user target message ts model =
 
         scrollbackMsg =
             if (not user.isServer) && serverInfo.meta.saveScrollback then
-                AddScrollback serverInfo target_ newLine
+                AddScrollback target_ newLine |> modifyServer serverInfo
             else
                 Noop
 
@@ -601,7 +607,7 @@ handleCommand serverInfo ts msg model =
                 pong =
                     ("PONG " ++ (String.concat params))
             in
-                update (SendRawLine serverInfo pong) model
+                updateServer serverInfo (SendRawLine pong) model
 
         ( "JOIN", [ channel ] ) ->
             let
@@ -645,7 +651,7 @@ handleCommand serverInfo ts msg model =
 
                         ( current, cmd ) =
                             if serverInfo.meta.nick == msg.user.nick then
-                                ( Nothing, CloseBuffer serverInfo channel )
+                                ( Nothing, CloseBuffer channel |> modifyServer serverInfo )
                             else
                                 ( model.current, Noop )
                     in
@@ -805,6 +811,6 @@ handleCommand serverInfo ts msg model =
             in
                 model
                     |> batchMessage
-                        [ AddLine serverInfo.meta.name serverBufferName newLine
+                        [ AddLine serverBufferName newLine |> modifyServer serverInfo
                         , RefreshScroll False
                         ]
