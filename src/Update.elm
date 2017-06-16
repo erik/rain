@@ -3,6 +3,7 @@ module Update exposing (Msg(..), ServerMsg(..), update)
 import Debug
 import Dict
 import Form exposing (Form)
+import Http
 import Irc
 import Model exposing (..)
 import Ports
@@ -392,7 +393,7 @@ update msg model =
                     , ( "proxyPass", meta.proxyPass )
                     , ( "name", meta.name )
                     ]
-                        |> List.map (\( k, v ) -> k ++ "=" ++ v)
+                        |> List.map (\( k, v ) -> k ++ "=" ++ (Http.encodeUri v))
                         |> String.join "&"
 
                 socketUrl =
