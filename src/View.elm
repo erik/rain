@@ -142,23 +142,23 @@ hasUnread buf =
 viewBufferList : Model -> Html Msg
 viewBufferList model =
     let
-        viewBufInfo serverName bufInfo =
+        viewBuf serverName buf =
             li
-                [ onClick (ModifyServer serverName (SelectBuffer bufInfo.name))
+                [ onClick (ModifyServer serverName (SelectBuffer buf.name))
                 , classList
                     [ ( "clickable", True )
-                    , ( "unread", hasUnread bufInfo )
+                    , ( "unread", hasUnread buf )
                     , ( "buffer-list-item", True )
                     ]
                 ]
-                [ text bufInfo.name ]
+                [ text buf.name ]
 
         bufferList server =
             server.buffers
                 |> Dict.values
                 |> List.filter (\buf -> not buf.isServer)
                 |> List.sortBy .name
-                |> List.map (viewBufInfo server.meta.name)
+                |> List.map (viewBuf server.meta.name)
 
         serverList =
             model.servers

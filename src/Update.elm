@@ -54,12 +54,12 @@ updateServer server msg model =
     case msg of
         AddLine bufferName line ->
             let
-                bufInfo =
+                buf =
                     getOrCreateBuffer server bufferName
                         |> \b -> { b | buffer = appendLine b.buffer line }
 
                 model_ =
-                    setBuffer server bufInfo model
+                    setBuffer server buf model
 
                 nickRegexp =
                     Regex.regex ("\\b" ++ server.meta.nick ++ "\\b")
@@ -75,8 +75,8 @@ updateServer server msg model =
                     String.concat [ "<", line.nick, ">: ", line.message ]
 
                 cmd =
-                    if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
-                        SendNotification bufInfo.name body
+                    if (not buf.isServer) && (matchesNick || isDirectMessage) then
+                        SendNotification buf.name body
                     else
                         Noop
             in
@@ -185,12 +185,12 @@ updateServer server msg model =
         StoreServer ->
             ( model, Ports.modifyServerStore ( server.meta, "STORE" ) )
 
-        SendLine bufInfo line ->
+        SendLine buf line ->
             if model.inputLine == "" then
                 model ! []
             else
                 { model | inputLine = "" }
-                    |> batchMessage (sendLine server bufInfo line model)
+                    |> batchMessage (sendLine server buf line model)
                     |> andThen (RefreshScroll True)
 
         SendRawLine line ->
@@ -288,7 +288,7 @@ update msg model =
                     else
                         Just meta.pass
 
-                info =
+                server =
                     { socket = socketUrl
                     , pass = pass
                     , meta = meta
@@ -297,7 +297,7 @@ update msg model =
 
                 servers_ =
                     model.servers
-                        |> Dict.insert meta.name info
+                        |> Dict.insert meta.name server
             in
                 { model | servers = servers_ } ! []
 
@@ -314,9 +314,9 @@ update msg model =
             let
                 model_ =
                     case getActive model of
-                        Just ( server, bufInfo ) ->
+                        Just ( server, buf ) ->
                             setBuffer server
-                                { bufInfo | lastChecked = time }
+                                { buf | lastChecked = time }
                                 model
 
                         Nothing ->
@@ -437,7 +437,7 @@ handleCommand server ts msg model =
                 model_ =
                     model.servers
                         |> Dict.insert server.meta.name server_
-                        |> \info -> { model | servers = info }
+                        |> \servers -> { model | servers = servers }
             in
                 model_ ! [ Ports.requestScrollback server.meta.name ]
 
@@ -480,13 +480,13 @@ handleCommand server ts msg model =
 
         ( "PART", channel :: reason ) ->
             case getBuffer server channel of
-                Just bufInfo ->
+                Just buf ->
                     let
-                        bufInfo_ =
-                            removeNick msg.user.nick bufInfo
+                        buf_ =
+                            removeNick msg.user.nick buf
 
                         model_ =
-                            setBuffer server bufInfo_ model
+                            setBuffer server buf_ model
 
                         ( current, cmd ) =
                             if server.meta.nick == msg.user.nick then
@@ -554,13 +554,13 @@ handleCommand server ts msg model =
         -- Channel topic
         ( "332", [ _, target, topic ] ) ->
             let
-                bufInfo =
+                buf =
                     getOrCreateBuffer server target
 
-                bufInfo_ =
-                    { bufInfo | topic = Just topic }
+                buf_ =
+                    { buf | topic = Just topic }
             in
-                ( setBuffer server bufInfo_ model, Cmd.none )
+                ( setBuffer server buf_ model, Cmd.none )
 
         ( "333", _ ) ->
             model ! []
@@ -578,22 +578,22 @@ handleCommand server ts msg model =
                     stripSpecial usersString
                         |> String.words
 
-                bufInfo =
+                buf =
                     getOrCreateBuffer server channel
                         |> addNicks userList
 
                 model_ =
-                    setBuffer server bufInfo model
+                    setBuffer server buf model
             in
                 model_ ! []
 
         -- END of /NAMES
         ( "366", [ _, channel, _ ] ) ->
             case getBuffer server channel of
-                Just bufInfo ->
+                Just buf ->
                     let
                         users =
-                            case bufInfo.users of
+                            case buf.users of
                                 UsersLoading list ->
                                     list
                                         |> List.map (\nick -> ( nick, 0 ))
@@ -604,7 +604,7 @@ handleCommand server ts msg model =
                                     set
 
                         model_ =
-                            setBuffer server { bufInfo | users = users } model
+                            setBuffer server { buf | users = users } model
                     in
                         model_ ! []
 
@@ -661,7 +661,7 @@ handleCommand server ts msg model =
 and such that could be used)
 -}
 sendLine : Server -> Buffer -> String -> Model -> List Msg
-sendLine server bufInfo line model =
+sendLine server buf line model =
     let
         privmsg target msg =
             let
@@ -674,7 +674,7 @@ sendLine server bufInfo line model =
                 rawLine =
                     String.join " " [ "PRIVMSG", target, ":" ++ msg ]
             in
-                if bufInfo.isServer then
+                if buf.isServer then
                     addErrorMessage "use /quote to send messages directly to the server"
                 else
                     [ SendRawLine rawLine |> modifyServer server
@@ -711,7 +711,7 @@ sendLine server bufInfo line model =
                     , message = msg
                     }
             in
-                [ AddLine bufInfo.name line |> modifyServer server ]
+                [ AddLine buf.name line |> modifyServer server ]
 
         slashCommand cmd params =
             case ( String.toLower cmd, params ) of
@@ -731,7 +731,7 @@ sendLine server bufInfo line model =
                         [ modifyServer server (SelectBuffer nick) ]
 
                 ( "/part", [] ) ->
-                    slashCommand "/part" [ bufInfo.name ]
+                    slashCommand "/part" [ buf.name ]
 
                 ( "/part", [ channel ] ) ->
                     [ SendRawLine ("PART " ++ channel) |> modifyServer server
@@ -739,19 +739,19 @@ sendLine server bufInfo line model =
                     ]
 
                 ( "/close", [] ) ->
-                    [ ClearBuffer bufInfo.name |> modifyServer server
-                    , CloseBuffer bufInfo.name |> modifyServer server
+                    [ ClearBuffer buf.name |> modifyServer server
+                    , CloseBuffer buf.name |> modifyServer server
                     ]
 
                 ( "/clear", [] ) ->
-                    [ ClearBuffer bufInfo.name |> modifyServer server ]
+                    [ ClearBuffer buf.name |> modifyServer server ]
 
                 ( "/me", rest ) ->
                     let
                         msg =
                             String.join " " rest
                     in
-                        ctcp bufInfo.name "ACTION" msg
+                        ctcp buf.name "ACTION" msg
 
                 ( "/privmsg", target :: rest ) ->
                     privmsg target (String.join " " rest)
@@ -768,7 +768,7 @@ sendLine server bufInfo line model =
                 ( "/names", [] ) ->
                     let
                         nickList =
-                            case bufInfo.users of
+                            case buf.users of
                                 UsersLoading list ->
                                     list
 
@@ -786,10 +786,10 @@ sendLine server bufInfo line model =
                         line =
                             { ts = model.currentTime
                             , message = String.join " " message
-                            , nick = bufInfo.name
+                            , nick = buf.name
                             }
                     in
-                        [ AddLine bufInfo.name line |> modifyServer server ]
+                        [ AddLine buf.name line |> modifyServer server ]
 
                 ( "/server", [ "save" ] ) ->
                     [ modifyServer server StoreServer ]
@@ -811,4 +811,4 @@ sendLine server bufInfo line model =
                 slashCommand (commandAliases cmd) params
 
             _ ->
-                privmsg bufInfo.name line
+                privmsg buf.name line
