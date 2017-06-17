@@ -126,7 +126,7 @@ viewForm form =
             ]
 
 
-hasUnread : BufferInfo -> Bool
+hasUnread : Buffer -> Bool
 hasUnread buf =
     let
         lastMessageTs =
@@ -153,18 +153,18 @@ viewBufferList model =
                 ]
                 [ text bufInfo.name ]
 
-        bufferList serverInfo =
-            serverInfo.buffers
+        bufferList server =
+            server.buffers
                 |> Dict.values
                 |> List.filter (\buf -> not buf.isServer)
                 |> List.sortBy .name
-                |> List.map (viewBufInfo serverInfo.meta.name)
+                |> List.map (viewBufInfo server.meta.name)
 
         serverList =
             model.servers
                 |> Dict.toList
                 |> List.map
-                    (\( serverName, serverInfo ) ->
+                    (\( serverName, server ) ->
                         div []
                             [ hr [] []
                             , li [ class "clickable" ]
@@ -175,7 +175,7 @@ viewBufferList model =
                                         )
                                     ]
                                     [ text serverName ]
-                                , ul [] (bufferList serverInfo)
+                                , ul [] (bufferList server)
                                 ]
                             ]
                     )
@@ -186,7 +186,7 @@ viewBufferList model =
         div [ id "buffer-list" ] [ ul [] (addServer :: serverList) ]
 
 
-viewBuffer : Model -> ServerInfo -> BufferInfo -> Html Msg
+viewBuffer : Model -> Server -> Buffer -> Html Msg
 viewBuffer model server buffer =
     let
         bufferName =
@@ -228,7 +228,7 @@ tabKey =
 {-| Handle enter / tab key presses.
 Cribbed from elm-todo
 -}
-onInputKey : Model -> ServerInfo -> BufferInfo -> Attribute Msg
+onInputKey : Model -> Server -> Buffer -> Attribute Msg
 onInputKey model server buffer =
     let
         isKey code =
@@ -251,7 +251,7 @@ onInputKey model server buffer =
         onWithOptions "keydown" options (Json.andThen isKey keyCode)
 
 
-viewTopic : BufferInfo -> Html Msg
+viewTopic : Buffer -> Html Msg
 viewTopic buffer =
     let
         topic =
@@ -260,7 +260,7 @@ viewTopic buffer =
         div [ id "buffer-topic" ] (linkifyLine topic)
 
 
-viewBufferMessages : ServerMetadata -> Buffer -> Html Msg
+viewBufferMessages : ServerMetadata -> LineBuffer -> Html Msg
 viewBufferMessages serverMeta buffer =
     buffer
         |> List.map (viewLineGroup serverMeta)

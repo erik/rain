@@ -41,16 +41,16 @@ subscriptions model =
             model.servers
                 |> Dict.values
                 |> List.map
-                    (\info -> WebSocket.listen info.socket (handleLines info.meta.name))
+                    (\server -> WebSocket.listen server.socket (handleLines server.meta.name))
     in
         Sub.batch
             (List.append
                 [ Ports.addSavedServer AddServer
                 , Ports.receiveScrollback
-                    (\( server, chan, line ) ->
-                        case getServer model server of
-                            Just serverInfo ->
-                                ModifyServer server (AddLine chan line)
+                    (\( serverName, chan, line ) ->
+                        case getServer model serverName of
+                            Just server ->
+                                ModifyServer serverName (AddLine chan line)
 
                             Nothing ->
                                 Noop

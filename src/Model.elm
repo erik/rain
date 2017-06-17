@@ -35,11 +35,11 @@ type alias ServerMetadata =
     }
 
 
-type alias ServerInfo =
+type alias Server =
     { socket : String
     , meta : ServerMetadata
     , pass : Maybe String
-    , buffers : Dict BufferName BufferInfo
+    , buffers : Dict BufferName Buffer
     }
 
 
@@ -57,7 +57,7 @@ type alias LineGroup =
     }
 
 
-type alias Buffer =
+type alias LineBuffer =
     List LineGroup
 
 
@@ -80,18 +80,18 @@ type UserList
     | UsersLoaded (Dict String Time.Time)
 
 
-type alias BufferInfo =
+type alias Buffer =
     { name : String
     , users : UserList
     , topic : Maybe String
-    , buffer : Buffer
+    , buffer : LineBuffer
     , lastChecked : Time.Time
     , isServer : Bool
     }
 
 
 type alias Model =
-    { servers : Dict ServerName ServerInfo
+    { servers : Dict ServerName Server
     , current : Maybe ServerBuffer
     , inputLine : String
     , currentTime : Time
@@ -122,7 +122,7 @@ initialModel =
     }
 
 
-newBuffer : String -> BufferInfo
+newBuffer : String -> Buffer
 newBuffer name =
     { name = name
     , users = UsersLoading []
@@ -133,7 +133,7 @@ newBuffer name =
     }
 
 
-setNickTimestamp : String -> Time.Time -> BufferInfo -> BufferInfo
+setNickTimestamp : String -> Time.Time -> Buffer -> Buffer
 setNickTimestamp nick ts buf =
     case buf.users of
         UsersLoading list ->
@@ -143,7 +143,7 @@ setNickTimestamp nick ts buf =
             { buf | users = UsersLoaded (Dict.insert nick ts set) }
 
 
-addNicks : List String -> BufferInfo -> BufferInfo
+addNicks : List String -> Buffer -> Buffer
 addNicks nicks buf =
     case buf.users of
         UsersLoading list ->
@@ -160,7 +160,7 @@ addNicks nicks buf =
                 { buf | users = UsersLoaded users }
 
 
-removeNick : String -> BufferInfo -> BufferInfo
+removeNick : String -> Buffer -> Buffer
 removeNick nick buf =
     case buf.users of
         UsersLoading list ->
@@ -170,33 +170,33 @@ removeNick nick buf =
             { buf | users = UsersLoaded (Dict.remove nick set) }
 
 
-getServer : Model -> ServerName -> Maybe ServerInfo
+getServer : Model -> ServerName -> Maybe Server
 getServer model serverName =
     Dict.get serverName model.servers
 
 
-setBuffer : ServerInfo -> BufferInfo -> Model -> Model
-setBuffer serverInfo buf model =
+setBuffer : Server -> Buffer -> Model -> Model
+setBuffer server buf model =
     let
         name_ =
             String.toLower buf.name
 
-        serverInfo_ =
+        server_ =
             let
                 buffers =
-                    Dict.insert name_ buf serverInfo.buffers
+                    Dict.insert name_ buf server.buffers
             in
-                { serverInfo | buffers = buffers }
+                { server | buffers = buffers }
     in
-        { model | servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers }
+        { model | servers = Dict.insert server.meta.name server_ model.servers }
 
 
-getBuffer : ServerInfo -> BufferName -> Maybe BufferInfo
-getBuffer serverInfo bufferName =
-    Dict.get (String.toLower bufferName) serverInfo.buffers
+getBuffer : Server -> BufferName -> Maybe Buffer
+getBuffer server bufferName =
+    Dict.get (String.toLower bufferName) server.buffers
 
 
-getServerBuffer : Model -> ServerBuffer -> Maybe ( ServerInfo, BufferInfo )
+getServerBuffer : Model -> ServerBuffer -> Maybe ( Server, Buffer )
 getServerBuffer model ( sn, bn ) =
     let
         server =
@@ -209,23 +209,23 @@ getServerBuffer model ( sn, bn ) =
         Maybe.map2 (,) server buffer
 
 
-getOrCreateBuffer : ServerInfo -> BufferName -> BufferInfo
-getOrCreateBuffer serverInfo bufferName =
-    getBuffer serverInfo bufferName
+getOrCreateBuffer : Server -> BufferName -> Buffer
+getOrCreateBuffer server bufferName =
+    getBuffer server bufferName
         |> Maybe.withDefault (newBuffer bufferName)
 
 
-getActive : Model -> Maybe ( ServerInfo, BufferInfo )
+getActive : Model -> Maybe ( Server, Buffer )
 getActive model =
     model.current |> Maybe.andThen (getServerBuffer model)
 
 
-getActiveBuffer : Model -> Maybe BufferInfo
+getActiveBuffer : Model -> Maybe Buffer
 getActiveBuffer model =
     getActive model |> Maybe.map Tuple.second
 
 
-getActiveServer : Model -> Maybe ServerInfo
+getActiveServer : Model -> Maybe Server
 getActiveServer model =
     getActive model |> Maybe.map Tuple.first
 
