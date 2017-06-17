@@ -535,7 +535,7 @@ andThen msg ( model, cmd ) =
 
 batchMessage : List Msg -> Model -> ( Model, Cmd Msg )
 batchMessage msgs model =
-    List.foldl (andThen) ( model, Cmd.none ) msgs
+    List.foldr (andThen) ( model, Cmd.none ) msgs
 
 
 handleMessage : ServerInfo -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
