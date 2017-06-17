@@ -28,22 +28,20 @@ init =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
+        handleLines serverName lines =
+            lines
+                |> String.trim
+                |> String.lines
+                |> List.filter (not << String.isEmpty)
+                |> List.map (\line -> ModifyServer serverName (ReceiveRawLine line))
+                |> MultiMsg
+
         -- Establish all of our open websocket connections
         recvWs =
             model.servers
                 |> Dict.values
                 |> List.map
-                    (\info ->
-                        WebSocket.listen info.socket
-                            (\lines ->
-                                lines
-                                    |> String.trim
-                                    |> String.lines
-                                    |> List.filter (not << String.isEmpty)
-                                    |> List.map (ReceiveRawLine info.meta.name)
-                                    |> MultiMsg
-                            )
-                    )
+                    (\info -> WebSocket.listen info.socket (handleLines info.meta.name))
     in
         Sub.batch
             (List.append
@@ -52,7 +50,7 @@ subscriptions model =
                     (\( server, chan, line ) ->
                         case getServer model server of
                             Just serverInfo ->
-                                AddLine chan line |> ModifyServer server
+                                ModifyServer server (AddLine chan line)
 
                             Nothing ->
                                 Noop

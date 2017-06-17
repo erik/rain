@@ -21,6 +21,8 @@ type ServerMsg
     | CreateBuffer BufferName
     | DisconnectServer
     | RemoveServer
+    | ReceiveRawLine String
+    | SelectBuffer BufferName
     | SendLine BufferInfo String
     | SendRawLine String
     | StoreServer
@@ -32,9 +34,7 @@ type Msg
     | AddServer ServerMetadata
     | FormMsg Form.Msg
     | MultiMsg (List Msg)
-    | ReceiveRawLine ServerName String
     | RefreshScroll Bool
-    | SelectBuffer ServerName BufferName
     | SendNotification String String
     | ShowAddServerForm
     | Tick Time
@@ -150,6 +150,35 @@ updateServer serverInfo msg model =
 
         RemoveServer ->
             ( model, Ports.modifyServerStore ( serverInfo.meta, "REMOVE" ) )
+
+        ReceiveRawLine line ->
+            let
+                -- Grab the time out of the message or default to current time.
+                getTs msg =
+                    msg.time |> Maybe.withDefault model.currentTime
+            in
+                if line == "AUTHENTICATE" then
+                    update (modifyServer serverInfo ConnectIrc) model
+                else
+                    Irc.splitMessage line
+                        |> Maybe.map (\msg -> handleCommand serverInfo (getTs msg) msg model)
+                        |> Maybe.withDefault ( model, Cmd.none )
+
+        SelectBuffer bufferName ->
+            let
+                buffer =
+                    getOrCreateBuffer serverInfo bufferName
+                        |> \chan -> { chan | lastChecked = model.currentTime }
+
+                model_ =
+                    setBuffer serverInfo buffer model
+                        |> \model ->
+                            { model
+                                | current = Just ( serverInfo.meta.name, bufferName )
+                                , newServerForm = Nothing
+                            }
+            in
+                update (RefreshScroll True) model_
 
         StoreServer ->
             ( model, Ports.modifyServerStore ( serverInfo.meta, "STORE" ) )
@@ -270,50 +299,6 @@ update msg model =
 
         TypeLine str ->
             { model | inputLine = str } ! []
-
-        ReceiveRawLine serverName line ->
-            case getServer model serverName of
-                Just serverInfo ->
-                    let
-                        msg =
-                            Irc.splitMessage line
-
-                        -- Grab the time out of the message or default to current time.
-                        ts =
-                            msg
-                                |> Maybe.andThen .time
-                                |> Maybe.withDefault model.currentTime
-                    in
-                        if line == "AUTHENTICATE" then
-                            update (modifyServer serverInfo ConnectIrc) model
-                        else
-                            msg
-                                |> Maybe.map (\m -> handleCommand serverInfo ts m model)
-                                |> Maybe.withDefault ( model, Cmd.none )
-
-                _ ->
-                    Debug.crash "received line to unknown server"
-
-        SelectBuffer serverName bufferName ->
-            case getServer model serverName of
-                Just serverInfo ->
-                    let
-                        buffer =
-                            getOrCreateBuffer serverInfo bufferName
-                                |> \chan -> { chan | lastChecked = model.currentTime }
-
-                        model_ =
-                            setBuffer serverInfo buffer model
-                                |> \model ->
-                                    { model
-                                        | current = Just ( serverInfo.meta.name, bufferName )
-                                        , newServerForm = Nothing
-                                    }
-                    in
-                        update (RefreshScroll True) model_
-
-                Nothing ->
-                    Debug.crash "tried to select bad server"
 
         RefreshScroll force ->
             ( model, Ports.refreshScrollPosition force )
@@ -728,9 +713,10 @@ sendLine serverInfo bufInfo line model =
             case ( String.toLower cmd, params ) of
                 ( "/join", [ channel ] ) ->
                     if String.startsWith "#" channel then
-                        [ SendRawLine ("JOIN " ++ channel) |> modifyServer serverInfo
-                        , SelectBuffer serverInfo.meta.name channel
+                        [ SendRawLine ("JOIN " ++ channel)
+                        , SelectBuffer channel
                         ]
+                            |> List.map (modifyServer serverInfo)
                     else
                         addErrorMessage "channel names must begin with #"
 
@@ -738,7 +724,7 @@ sendLine serverInfo bufInfo line model =
                     if String.startsWith "#" nick then
                         addErrorMessage "can only initiate queries with users"
                     else
-                        [ SelectBuffer serverInfo.meta.name nick ]
+                        [ modifyServer serverInfo (SelectBuffer nick) ]
 
                 ( "/part", [] ) ->
                     slashCommand "/part" [ bufInfo.name ]

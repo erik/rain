@@ -144,7 +144,7 @@ viewBufferList model =
     let
         viewBufInfo serverName bufInfo =
             li
-                [ onClick (SelectBuffer serverName bufInfo.name)
+                [ onClick (ModifyServer serverName (SelectBuffer bufInfo.name))
                 , classList
                     [ ( "clickable", True )
                     , ( "unread", hasUnread bufInfo )
@@ -168,7 +168,12 @@ viewBufferList model =
                         div []
                             [ hr [] []
                             , li [ class "clickable" ]
-                                [ span [ onClick (SelectBuffer serverName serverBufferName) ]
+                                [ span
+                                    [ onClick
+                                        (ModifyServer serverName
+                                            (SelectBuffer serverBufferName)
+                                        )
+                                    ]
                                     [ text serverName ]
                                 , ul [] (bufferList serverInfo)
                                 ]
@@ -282,7 +287,7 @@ viewLineGroup serverMeta group =
                     ]
                     [ span
                         [ class "clickable"
-                        , onClick (SelectBuffer serverMeta.name group.nick)
+                        , onClick (ModifyServer serverMeta.name (SelectBuffer group.nick))
                         ]
                         [ text group.nick ]
                     ]
