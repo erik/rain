@@ -12,6 +12,8 @@ import Time exposing (Time)
 import WebSocket
 
 
+{-| Messages that require there to be a valid server specified.
+-}
 type ServerMsg
     = AddLine BufferName Line
     | AddScrollback BufferName Line
@@ -227,6 +229,8 @@ updateServer serverInfo msg model =
                                             |> List.sortBy (\( nick, lastMessage ) -> -lastMessage)
                                             |> List.map (Tuple.first)
                             )
+                        -- Don't complete our own nick
+                        |> Maybe.map (List.filter (\nick -> not (nick == serverInfo.meta.nick)))
                         -- And just take the first.
                         |> Maybe.andThen List.head
 
