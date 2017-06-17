@@ -12,7 +12,7 @@ import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Json.Decode as Json
 import Model exposing (..)
 import Regex exposing (HowMany(All), regex)
-import Update exposing (Msg(..))
+import Update exposing (Msg(..), ServerMsg(..))
 
 
 view : Model -> Html Msg
@@ -144,7 +144,7 @@ viewBufferList model =
     let
         viewBufInfo serverName bufInfo =
             li
-                [ onClick (SelectBuffer serverName bufInfo.name)
+                [ onClick (ModifyServer serverName (SelectBuffer bufInfo.name))
                 , classList
                     [ ( "clickable", True )
                     , ( "unread", hasUnread bufInfo )
@@ -168,7 +168,12 @@ viewBufferList model =
                         div []
                             [ hr [] []
                             , li [ class "clickable" ]
-                                [ span [ onClick (SelectBuffer serverName serverBufferName) ]
+                                [ span
+                                    [ onClick
+                                        (ModifyServer serverName
+                                            (SelectBuffer serverBufferName)
+                                        )
+                                    ]
                                     [ text serverName ]
                                 , ul [] (bufferList serverInfo)
                                 ]
@@ -228,10 +233,12 @@ onInputKey model server buffer =
     let
         isKey code =
             if code == enterKey then
-                SendLine server buffer model.inputLine
+                SendLine buffer model.inputLine
+                    |> ModifyServer server.meta.name
                     |> Json.succeed
             else if code == tabKey then
-                TabCompleteLine server buffer
+                TabCompleteLine buffer
+                    |> ModifyServer server.meta.name
                     |> Json.succeed
             else
                 Json.fail "nope"
@@ -280,7 +287,7 @@ viewLineGroup serverMeta group =
                     ]
                     [ span
                         [ class "clickable"
-                        , onClick (SelectBuffer serverMeta.name group.nick)
+                        , onClick (ModifyServer serverMeta.name (SelectBuffer group.nick))
                         ]
                         [ text group.nick ]
                     ]
