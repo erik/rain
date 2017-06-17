@@ -83,19 +83,6 @@ updateServer serverInfo msg model =
         AddScrollback bufferName line ->
             model ! [ Ports.saveScrollback ( serverInfo.meta.name, bufferName, line ) ]
 
-        DisconnectServer ->
-            { model | servers = Dict.remove serverInfo.meta.name model.servers } ! []
-
-        CreateBuffer bufferName ->
-            let
-                buffer =
-                    Model.newBuffer bufferName
-
-                model_ =
-                    setBuffer serverInfo buffer model
-            in
-                model_ ! []
-
         ClearBuffer bufferName ->
             case getBuffer serverInfo bufferName of
                 Just buffer ->
@@ -128,12 +115,6 @@ updateServer serverInfo msg model =
             in
                 model_ ! []
 
-        StoreServer ->
-            ( model, Ports.modifyServerStore ( serverInfo.meta, "STORE" ) )
-
-        RemoveServer ->
-            ( model, Ports.modifyServerStore ( serverInfo.meta, "REMOVE" ) )
-
         ConnectIrc ->
             let
                 passMsg =
@@ -154,167 +135,35 @@ updateServer serverInfo msg model =
                     |> List.map (\line -> modifyServer serverInfo (SendRawLine line))
                     |> flip batchMessage model
 
-        SendRawLine line ->
-            ( model, WebSocket.send serverInfo.socket line )
+        CreateBuffer bufferName ->
+            let
+                buffer =
+                    Model.newBuffer bufferName
+
+                model_ =
+                    setBuffer serverInfo buffer model
+            in
+                model_ ! []
+
+        DisconnectServer ->
+            { model | servers = Dict.remove serverInfo.meta.name model.servers } ! []
+
+        RemoveServer ->
+            ( model, Ports.modifyServerStore ( serverInfo.meta, "REMOVE" ) )
+
+        StoreServer ->
+            ( model, Ports.modifyServerStore ( serverInfo.meta, "STORE" ) )
 
         SendLine bufInfo line ->
-            let
-                privmsg target msg =
-                    let
-                        line =
-                            { ts = model.currentTime
-                            , nick = serverInfo.meta.nick
-                            , message = msg
-                            }
+            if model.inputLine == "" then
+                model ! []
+            else
+                { model | inputLine = "" }
+                    |> batchMessage (sendLine serverInfo bufInfo line model)
+                    |> andThen (RefreshScroll True)
 
-                        rawLine =
-                            String.join " " [ "PRIVMSG", target, ":" ++ msg ]
-                    in
-                        if bufInfo.isServer then
-                            addErrorMessage "use /quote to send messages directly to the server"
-                        else
-                            [ SendRawLine rawLine |> modifyServer serverInfo
-                            , AddLine target line |> modifyServer serverInfo
-                            , if serverInfo.meta.saveScrollback then
-                                AddScrollback target line |> modifyServer serverInfo
-                              else
-                                Noop
-                            ]
-
-                ctcp target command msg =
-                    let
-                        msg_ =
-                            String.concat [ "\x01", command, " ", msg, "\x01" ]
-                    in
-                        privmsg target msg_
-
-                -- shortened versions of common commands
-                commandAlias cmd =
-                    Dict.fromList
-                        [ ( "/j", "/join" )
-                        , ( "/msg", "/privmsg" )
-                        , ( "/pm", "/privmsg" )
-                        , ( "/q", "/query" )
-                        ]
-                        |> Dict.get cmd
-                        |> Maybe.withDefault cmd
-
-                addErrorMessage msg =
-                    let
-                        line =
-                            { ts = model.currentTime
-                            , nick = "*error"
-                            , message = msg
-                            }
-                    in
-                        [ AddLine bufInfo.name line |> modifyServer serverInfo ]
-
-                slashCommand cmd params =
-                    case ( String.toLower cmd, params ) of
-                        ( "/join", [ channel ] ) ->
-                            if String.startsWith "#" channel then
-                                [ SendRawLine ("JOIN " ++ channel) |> modifyServer serverInfo
-                                , SelectBuffer serverInfo.meta.name channel
-                                ]
-                            else
-                                addErrorMessage "channel names must begin with #"
-
-                        ( "/query", [ nick ] ) ->
-                            if String.startsWith "#" nick then
-                                addErrorMessage "can only initiate queries with users"
-                            else
-                                [ SelectBuffer serverInfo.meta.name nick ]
-
-                        ( "/part", [] ) ->
-                            slashCommand "/part" [ bufInfo.name ]
-
-                        ( "/part", [ channel ] ) ->
-                            [ SendRawLine ("PART " ++ channel) |> modifyServer serverInfo
-                            , CloseBuffer channel |> modifyServer serverInfo
-                            ]
-
-                        ( "/close", [] ) ->
-                            [ ClearBuffer bufInfo.name |> modifyServer serverInfo
-                            , CloseBuffer bufInfo.name |> modifyServer serverInfo
-                            ]
-
-                        ( "/clear", [] ) ->
-                            [ ClearBuffer bufInfo.name |> modifyServer serverInfo ]
-
-                        ( "/me", rest ) ->
-                            let
-                                msg =
-                                    String.join " " rest
-                            in
-                                ctcp bufInfo.name "ACTION" msg
-
-                        ( "/privmsg", target :: rest ) ->
-                            privmsg target (String.join " " rest)
-
-                        ( "/ping", [ target ] ) ->
-                            ctcp target "PING" (toString model.currentTime)
-
-                        ( "/ns", rest ) ->
-                            privmsg "NickServ" (String.join " " rest)
-
-                        ( "/cs", rest ) ->
-                            privmsg "ChanServ" (String.join " " rest)
-
-                        ( "/names", [] ) ->
-                            let
-                                nickList =
-                                    case bufInfo.users of
-                                        UsersLoading list ->
-                                            list
-
-                                        UsersLoaded set ->
-                                            Dict.toList set
-                                                |> List.map (Tuple.first)
-
-                                nicks =
-                                    List.take 100 nickList
-
-                                message =
-                                    [ List.length nickList |> toString, "users:" ]
-                                        ++ nicks
-
-                                line =
-                                    { ts = model.currentTime
-                                    , message = String.join " " message
-                                    , nick = bufInfo.name
-                                    }
-                            in
-                                [ AddLine bufInfo.name line |> modifyServer serverInfo ]
-
-                        ( "/server", [ "save" ] ) ->
-                            [ modifyServer serverInfo StoreServer ]
-
-                        ( "/server", [ "delete" ] ) ->
-                            [ modifyServer serverInfo RemoveServer ]
-
-                        ( "/server", [ "disconnect" ] ) ->
-                            [ modifyServer serverInfo DisconnectServer ]
-
-                        ( "/quote", rest ) ->
-                            [ SendRawLine (String.join " " rest) |> modifyServer serverInfo ]
-
-                        _ ->
-                            addErrorMessage "unknown command, did you forget to /quote?"
-
-                messages =
-                    case ( String.left 1 line, String.words line ) of
-                        ( "/", cmd :: params ) ->
-                            slashCommand (commandAlias cmd) params
-
-                        _ ->
-                            privmsg bufInfo.name line
-            in
-                if model.inputLine == "" then
-                    model ! []
-                else
-                    { model | inputLine = "" }
-                        |> batchMessage messages
-                        |> andThen (RefreshScroll True)
+        SendRawLine line ->
+            ( model, WebSocket.send serverInfo.socket line )
 
         TabCompleteLine bufferInfo ->
             let
@@ -580,7 +429,7 @@ handleMessage serverInfo user target message ts model =
             else
                 model
     in
-        batchMessage [ newMsg, refreshMsg, scrollbackMsg ] model_
+        update (MultiMsg [ newMsg, refreshMsg, scrollbackMsg ]) model_
 
 
 handleCommand : ServerInfo -> Time.Time -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
@@ -810,8 +659,166 @@ handleCommand serverInfo ts msg model =
                 _ =
                     Debug.log "unknown msg" msg
             in
-                model
-                    |> batchMessage
+                update
+                    (MultiMsg
                         [ AddLine serverBufferName newLine |> modifyServer serverInfo
                         , RefreshScroll False
                         ]
+                    )
+                    model
+
+
+{-| Handle sending messages to the server (and all the slash commands
+and such that could be used)
+-}
+sendLine : ServerInfo -> BufferInfo -> String -> Model -> List Msg
+sendLine serverInfo bufInfo line model =
+    let
+        privmsg target msg =
+            let
+                line =
+                    { ts = model.currentTime
+                    , nick = serverInfo.meta.nick
+                    , message = msg
+                    }
+
+                rawLine =
+                    String.join " " [ "PRIVMSG", target, ":" ++ msg ]
+            in
+                if bufInfo.isServer then
+                    addErrorMessage "use /quote to send messages directly to the server"
+                else
+                    [ SendRawLine rawLine |> modifyServer serverInfo
+                    , AddLine target line |> modifyServer serverInfo
+                    , if serverInfo.meta.saveScrollback then
+                        AddScrollback target line |> modifyServer serverInfo
+                      else
+                        Noop
+                    ]
+
+        ctcp target command msg =
+            let
+                msg_ =
+                    String.concat [ "\x01", command, " ", msg, "\x01" ]
+            in
+                privmsg target msg_
+
+        -- shortened versions of common commands
+        commandAliases cmd =
+            Dict.fromList
+                [ ( "/j", "/join" )
+                , ( "/msg", "/privmsg" )
+                , ( "/pm", "/privmsg" )
+                , ( "/q", "/query" )
+                ]
+                |> Dict.get cmd
+                |> Maybe.withDefault cmd
+
+        addErrorMessage msg =
+            let
+                line =
+                    { ts = model.currentTime
+                    , nick = "*error"
+                    , message = msg
+                    }
+            in
+                [ AddLine bufInfo.name line |> modifyServer serverInfo ]
+
+        slashCommand cmd params =
+            case ( String.toLower cmd, params ) of
+                ( "/join", [ channel ] ) ->
+                    if String.startsWith "#" channel then
+                        [ SendRawLine ("JOIN " ++ channel) |> modifyServer serverInfo
+                        , SelectBuffer serverInfo.meta.name channel
+                        ]
+                    else
+                        addErrorMessage "channel names must begin with #"
+
+                ( "/query", [ nick ] ) ->
+                    if String.startsWith "#" nick then
+                        addErrorMessage "can only initiate queries with users"
+                    else
+                        [ SelectBuffer serverInfo.meta.name nick ]
+
+                ( "/part", [] ) ->
+                    slashCommand "/part" [ bufInfo.name ]
+
+                ( "/part", [ channel ] ) ->
+                    [ SendRawLine ("PART " ++ channel) |> modifyServer serverInfo
+                    , CloseBuffer channel |> modifyServer serverInfo
+                    ]
+
+                ( "/close", [] ) ->
+                    [ ClearBuffer bufInfo.name |> modifyServer serverInfo
+                    , CloseBuffer bufInfo.name |> modifyServer serverInfo
+                    ]
+
+                ( "/clear", [] ) ->
+                    [ ClearBuffer bufInfo.name |> modifyServer serverInfo ]
+
+                ( "/me", rest ) ->
+                    let
+                        msg =
+                            String.join " " rest
+                    in
+                        ctcp bufInfo.name "ACTION" msg
+
+                ( "/privmsg", target :: rest ) ->
+                    privmsg target (String.join " " rest)
+
+                ( "/ping", [ target ] ) ->
+                    ctcp target "PING" (toString model.currentTime)
+
+                ( "/ns", rest ) ->
+                    privmsg "NickServ" (String.join " " rest)
+
+                ( "/cs", rest ) ->
+                    privmsg "ChanServ" (String.join " " rest)
+
+                ( "/names", [] ) ->
+                    let
+                        nickList =
+                            case bufInfo.users of
+                                UsersLoading list ->
+                                    list
+
+                                UsersLoaded set ->
+                                    Dict.toList set
+                                        |> List.map (Tuple.first)
+
+                        nicks =
+                            List.take 100 nickList
+
+                        message =
+                            [ List.length nickList |> toString, "users:" ]
+                                ++ nicks
+
+                        line =
+                            { ts = model.currentTime
+                            , message = String.join " " message
+                            , nick = bufInfo.name
+                            }
+                    in
+                        [ AddLine bufInfo.name line |> modifyServer serverInfo ]
+
+                ( "/server", [ "save" ] ) ->
+                    [ modifyServer serverInfo StoreServer ]
+
+                ( "/server", [ "delete" ] ) ->
+                    [ modifyServer serverInfo RemoveServer ]
+
+                ( "/server", [ "disconnect" ] ) ->
+                    [ modifyServer serverInfo DisconnectServer ]
+
+                ( "/quote", rest ) ->
+                    [ SendRawLine (String.join " " rest) |> modifyServer serverInfo ]
+
+                _ ->
+                    addErrorMessage "unknown command, did you forget to /quote?"
+    in
+        case ( String.left 1 line, String.words line ) of
+            ( "/", cmd :: params ) ->
+                slashCommand (commandAliases cmd) params
+
+            _ ->
+                privmsg bufInfo.name line
