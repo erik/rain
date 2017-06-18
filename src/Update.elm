@@ -56,7 +56,7 @@ updateServer server msg model =
             let
                 buf =
                     getOrCreateBuffer server bufferName
-                        |> \b -> { b | buffer = appendLine b.buffer line }
+                        |> (\b -> { b | buffer = appendLine b.buffer line })
 
                 model_ =
                     setBuffer server buf model
@@ -69,13 +69,13 @@ updateServer server msg model =
 
                 isDirectMessage =
                     (server.meta.nick /= line.nick)
-                        && (not (String.startsWith "#" bufferName))
+                        && not (String.startsWith "#" bufferName)
 
                 body =
                     String.concat [ "<", line.nick, ">: ", line.message ]
 
                 cmd =
-                    if (not buf.isServer) && (matchesNick || isDirectMessage) then
+                    if not buf.isServer && (matchesNick || isDirectMessage) then
                         SendNotification buf.name body
                     else
                         Noop
@@ -92,7 +92,7 @@ updateServer server msg model =
                         buffer_ =
                             { buffer | buffer = [] }
                     in
-                        (setBuffer server buffer_ model)
+                        setBuffer server buffer_ model
                             ! [ Ports.clearScrollback ( server.meta.name, bufferName ) ]
 
                 Nothing ->
@@ -170,15 +170,16 @@ updateServer server msg model =
             let
                 buffer =
                     getOrCreateBuffer server bufferName
-                        |> \chan -> { chan | lastChecked = model.currentTime }
+                        |> (\chan -> { chan | lastChecked = model.currentTime })
 
                 model_ =
                     setBuffer server buffer model
-                        |> \model ->
-                            { model
-                                | current = Just ( server.meta.name, bufferName )
-                                , newServerForm = Nothing
-                            }
+                        |> (\model ->
+                                { model
+                                    | current = Just ( server.meta.name, bufferName )
+                                    , newServerForm = Nothing
+                                }
+                           )
             in
                 update (RefreshScroll True) model_
 
@@ -227,7 +228,7 @@ updateServer server msg model =
                                             |> Dict.filter (\nick _ -> String.startsWith word nick)
                                             |> Dict.toList
                                             |> List.sortBy (\( nick, lastMessage ) -> -lastMessage)
-                                            |> List.map (Tuple.first)
+                                            |> List.map Tuple.first
                             )
                         -- Don't complete our own nick
                         |> Maybe.map (List.filter (\nick -> not (nick == server.meta.nick)))
@@ -245,7 +246,7 @@ updateServer server msg model =
 
                                 words ->
                                     [ completion ]
-                                        |> List.append (List.take ((List.length words) - 1) words)
+                                        |> List.append (List.take (List.length words - 1) words)
                                         |> String.join " "
 
                         Nothing ->
@@ -275,7 +276,7 @@ update msg model =
                     , ( "proxyPass", meta.proxyPass )
                     , ( "name", meta.name )
                     ]
-                        |> List.map (\( k, v ) -> k ++ "=" ++ (Http.encodeUri v))
+                        |> List.map (\( k, v ) -> k ++ "=" ++ Http.encodeUri v)
                         |> String.join "&"
 
                 socketUrl =
@@ -331,7 +332,7 @@ update msg model =
 
                 serverMeta =
                     form_
-                        |> Maybe.andThen (Form.getOutput)
+                        |> Maybe.andThen Form.getOutput
             in
                 case ( formMsg, serverMeta ) of
                     ( Form.Submit, Just serverMeta ) ->
@@ -373,7 +374,7 @@ andThen msg ( model, cmd ) =
 
 batchMessage : List Msg -> Model -> ( Model, Cmd Msg )
 batchMessage msgs model =
-    List.foldr (andThen) ( model, Cmd.none ) msgs
+    List.foldr andThen ( model, Cmd.none ) msgs
 
 
 handleMessage : Server -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
@@ -404,7 +405,7 @@ handleMessage server user target message ts model =
                 Noop
 
         scrollbackMsg =
-            if (not user.isServer) && server.meta.saveScrollback then
+            if not user.isServer && server.meta.saveScrollback then
                 AddScrollback target_ newLine |> modifyServer server
             else
                 Noop
@@ -437,14 +438,14 @@ handleCommand server ts msg model =
                 model_ =
                     model.servers
                         |> Dict.insert server.meta.name server_
-                        |> \servers -> { model | servers = servers }
+                        |> (\servers -> { model | servers = servers })
             in
                 model_ ! [ Ports.requestScrollback server.meta.name ]
 
         ( "PING", params ) ->
             let
                 pong =
-                    ("PONG " ++ (String.concat params))
+                    "PONG " ++ String.concat params
             in
                 updateServer server (SendRawLine pong) model
 
@@ -508,7 +509,7 @@ handleCommand server ts msg model =
                 server_ =
                     server.buffers
                         |> Dict.map (\_ buf -> removeNick msg.user.nick buf)
-                        |> \buffers -> { server | buffers = buffers }
+                        |> (\buffers -> { server | buffers = buffers })
 
                 model_ =
                     { model | servers = Dict.insert server.meta.name server model.servers }
@@ -624,7 +625,7 @@ handleCommand server ts msg model =
                         server.meta.nick
 
                 serverMeta_ =
-                    server.meta |> \meta -> { meta | nick = myNick }
+                    server.meta |> (\meta -> { meta | nick = myNick })
 
                 server_ =
                     { server | meta = serverMeta_ }
@@ -774,7 +775,7 @@ sendLine server buf line model =
 
                                 UsersLoaded set ->
                                     Dict.toList set
-                                        |> List.map (Tuple.first)
+                                        |> List.map Tuple.first
 
                         nicks =
                             List.take 100 nickList
