@@ -49,7 +49,8 @@
          if (messageBuffer) messageBuffer.scrollTop = messageBuffer.scrollHeight
 
          // HACK: Also focus the input
-         document.getElementById('input-line').focus()
+         let inputLine = document.getElementById('input-line')
+         if (inputLine) inputLine.focus()
      })
  })
 
