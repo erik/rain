@@ -37,6 +37,7 @@
  })
 
  app.ports.refreshScrollPosition.subscribe(force => {
+
      // Bail if we're not at the bottom of the page (don't interrupt scrolling)
      if (!force && !scrollStick) {
          return
@@ -46,6 +47,9 @@
      window.requestAnimationFrame(() => {
          let messageBuffer = document.getElementById('buffer-messages')
          if (messageBuffer) messageBuffer.scrollTop = messageBuffer.scrollHeight
+
+         // HACK: Also focus the input
+         document.getElementById('input-line').focus()
      })
  })
 

@@ -25,10 +25,10 @@ type ServerMsg
     | RemoveServer
     | ReceiveRawLine String
     | SelectBuffer BufferName
-    | SendLine BufferInfo String
+    | SendLine Buffer String
     | SendRawLine String
     | StoreServer
-    | TabCompleteLine BufferInfo
+    | TabCompleteLine Buffer
 
 
 type Msg
@@ -44,56 +44,56 @@ type Msg
     | Noop
 
 
-modifyServer : ServerInfo -> ServerMsg -> Msg
-modifyServer serverInfo msg =
-    ModifyServer serverInfo.meta.name msg
+modifyServer : Server -> ServerMsg -> Msg
+modifyServer server msg =
+    ModifyServer server.meta.name msg
 
 
-updateServer : ServerInfo -> ServerMsg -> Model -> ( Model, Cmd Msg )
-updateServer serverInfo msg model =
+updateServer : Server -> ServerMsg -> Model -> ( Model, Cmd Msg )
+updateServer server msg model =
     case msg of
         AddLine bufferName line ->
             let
-                bufInfo =
-                    getOrCreateBuffer serverInfo bufferName
-                        |> \b -> { b | buffer = appendLine b.buffer line }
+                buf =
+                    getOrCreateBuffer server bufferName
+                        |> (\b -> { b | buffer = appendLine b.buffer line })
 
                 model_ =
-                    setBuffer serverInfo bufInfo model
+                    setBuffer server buf model
 
                 nickRegexp =
-                    Regex.regex ("\\b" ++ serverInfo.meta.nick ++ "\\b")
+                    Regex.regex ("\\b" ++ server.meta.nick ++ "\\b")
 
                 matchesNick =
                     Regex.contains nickRegexp line.message
 
                 isDirectMessage =
-                    (serverInfo.meta.nick /= line.nick)
-                        && (not (String.startsWith "#" bufferName))
+                    (server.meta.nick /= line.nick)
+                        && not (String.startsWith "#" bufferName)
 
                 body =
                     String.concat [ "<", line.nick, ">: ", line.message ]
 
                 cmd =
-                    if (not bufInfo.isServer) && (matchesNick || isDirectMessage) then
-                        SendNotification bufInfo.name body
+                    if not buf.isServer && (matchesNick || isDirectMessage) then
+                        SendNotification buf.name body
                     else
                         Noop
             in
                 update cmd model_
 
         AddScrollback bufferName line ->
-            model ! [ Ports.saveScrollback ( serverInfo.meta.name, bufferName, line ) ]
+            model ! [ Ports.saveScrollback ( server.meta.name, bufferName, line ) ]
 
         ClearBuffer bufferName ->
-            case getBuffer serverInfo bufferName of
+            case getBuffer server bufferName of
                 Just buffer ->
                     let
                         buffer_ =
                             { buffer | buffer = [] }
                     in
-                        (setBuffer serverInfo buffer_ model)
-                            ! [ Ports.clearScrollback ( serverInfo.meta.name, bufferName ) ]
+                        setBuffer server buffer_ model
+                            ! [ Ports.clearScrollback ( server.meta.name, bufferName ) ]
 
                 Nothing ->
                     Debug.crash "bad buffer name given?" bufferName
@@ -101,18 +101,18 @@ updateServer serverInfo msg model =
         CloseBuffer bufferName ->
             let
                 current =
-                    if model.current == Just ( serverInfo.meta.name, bufferName ) then
+                    if model.current == Just ( server.meta.name, bufferName ) then
                         Nothing
                     else
                         model.current
 
-                serverInfo_ =
-                    { serverInfo | buffers = Dict.remove (String.toLower bufferName) serverInfo.buffers }
+                server_ =
+                    { server | buffers = Dict.remove (String.toLower bufferName) server.buffers }
 
                 model_ =
                     { model
                         | current = current
-                        , servers = Dict.insert serverInfo.meta.name serverInfo_ model.servers
+                        , servers = Dict.insert server.meta.name server_ model.servers
                     }
             in
                 model_ ! []
@@ -120,7 +120,7 @@ updateServer serverInfo msg model =
         ConnectIrc ->
             let
                 passMsg =
-                    serverInfo.pass
+                    server.pass
                         |> Maybe.map (\pass -> "PASS " ++ pass)
                         |> Maybe.withDefault ""
 
@@ -129,12 +129,12 @@ updateServer serverInfo msg model =
                     , "CAP REQ znc.in/server-time-iso"
                     , "CAP REQ server-time"
                     , "CAP END"
-                    , "NICK " ++ serverInfo.meta.nick
-                    , "USER " ++ serverInfo.meta.nick ++ " * * :" ++ serverInfo.meta.nick
+                    , "NICK " ++ server.meta.nick
+                    , "USER " ++ server.meta.nick ++ " * * :" ++ server.meta.nick
                     ]
             in
                 lines
-                    |> List.map (\line -> modifyServer serverInfo (SendRawLine line))
+                    |> List.map (\line -> modifyServer server (SendRawLine line))
                     |> flip batchMessage model
 
         CreateBuffer bufferName ->
@@ -143,15 +143,15 @@ updateServer serverInfo msg model =
                     Model.newBuffer bufferName
 
                 model_ =
-                    setBuffer serverInfo buffer model
+                    setBuffer server buffer model
             in
                 model_ ! []
 
         DisconnectServer ->
-            { model | servers = Dict.remove serverInfo.meta.name model.servers } ! []
+            { model | servers = Dict.remove server.meta.name model.servers } ! []
 
         RemoveServer ->
-            ( model, Ports.modifyServerStore ( serverInfo.meta, "REMOVE" ) )
+            ( model, Ports.modifyServerStore ( server.meta, "REMOVE" ) )
 
         ReceiveRawLine line ->
             let
@@ -160,43 +160,44 @@ updateServer serverInfo msg model =
                     msg.time |> Maybe.withDefault model.currentTime
             in
                 if line == "AUTHENTICATE" then
-                    update (modifyServer serverInfo ConnectIrc) model
+                    update (modifyServer server ConnectIrc) model
                 else
                     Irc.splitMessage line
-                        |> Maybe.map (\msg -> handleCommand serverInfo (getTs msg) msg model)
+                        |> Maybe.map (\msg -> handleCommand server (getTs msg) msg model)
                         |> Maybe.withDefault ( model, Cmd.none )
 
         SelectBuffer bufferName ->
             let
                 buffer =
-                    getOrCreateBuffer serverInfo bufferName
-                        |> \chan -> { chan | lastChecked = model.currentTime }
+                    getOrCreateBuffer server bufferName
+                        |> (\chan -> { chan | lastChecked = model.currentTime })
 
                 model_ =
-                    setBuffer serverInfo buffer model
-                        |> \model ->
-                            { model
-                                | current = Just ( serverInfo.meta.name, bufferName )
-                                , newServerForm = Nothing
-                            }
+                    setBuffer server buffer model
+                        |> (\model ->
+                                { model
+                                    | current = Just ( server.meta.name, bufferName )
+                                    , newServerForm = Nothing
+                                }
+                           )
             in
                 update (RefreshScroll True) model_
 
         StoreServer ->
-            ( model, Ports.modifyServerStore ( serverInfo.meta, "STORE" ) )
+            ( model, Ports.modifyServerStore ( server.meta, "STORE" ) )
 
-        SendLine bufInfo line ->
+        SendLine buf line ->
             if model.inputLine == "" then
                 model ! []
             else
                 { model | inputLine = "" }
-                    |> batchMessage (sendLine serverInfo bufInfo line model)
+                    |> batchMessage (sendLine server buf line model)
                     |> andThen (RefreshScroll True)
 
         SendRawLine line ->
-            ( model, WebSocket.send serverInfo.socket line )
+            ( model, WebSocket.send server.socket line )
 
-        TabCompleteLine bufferInfo ->
+        TabCompleteLine buffer ->
             let
                 words =
                     String.split " " model.inputLine
@@ -217,7 +218,7 @@ updateServer serverInfo msg model =
                     lastWord
                         |> Maybe.map
                             (\word ->
-                                case bufferInfo.users of
+                                case buffer.users of
                                     UsersLoading list ->
                                         List.filter (String.startsWith word) list
                                             |> List.sort
@@ -227,10 +228,10 @@ updateServer serverInfo msg model =
                                             |> Dict.filter (\nick _ -> String.startsWith word nick)
                                             |> Dict.toList
                                             |> List.sortBy (\( nick, lastMessage ) -> -lastMessage)
-                                            |> List.map (Tuple.first)
+                                            |> List.map Tuple.first
                             )
                         -- Don't complete our own nick
-                        |> Maybe.map (List.filter (\nick -> not (nick == serverInfo.meta.nick)))
+                        |> Maybe.map (List.filter (\nick -> not (nick == server.meta.nick)))
                         -- And just take the first.
                         |> Maybe.andThen List.head
 
@@ -245,7 +246,7 @@ updateServer serverInfo msg model =
 
                                 words ->
                                     [ completion ]
-                                        |> List.append (List.take ((List.length words) - 1) words)
+                                        |> List.append (List.take (List.length words - 1) words)
                                         |> String.join " "
 
                         Nothing ->
@@ -259,8 +260,8 @@ update msg model =
     case msg of
         ModifyServer serverName msg ->
             case getServer model serverName of
-                Just serverInfo ->
-                    updateServer serverInfo msg model
+                Just server ->
+                    updateServer server msg model
 
                 Nothing ->
                     Debug.crash "unknown server given" ( serverName, msg )
@@ -275,7 +276,7 @@ update msg model =
                     , ( "proxyPass", meta.proxyPass )
                     , ( "name", meta.name )
                     ]
-                        |> List.map (\( k, v ) -> k ++ "=" ++ (Http.encodeUri v))
+                        |> List.map (\( k, v ) -> k ++ "=" ++ Http.encodeUri v)
                         |> String.join "&"
 
                 socketUrl =
@@ -288,7 +289,7 @@ update msg model =
                     else
                         Just meta.pass
 
-                info =
+                server =
                     { socket = socketUrl
                     , pass = pass
                     , meta = meta
@@ -297,7 +298,7 @@ update msg model =
 
                 servers_ =
                     model.servers
-                        |> Dict.insert meta.name info
+                        |> Dict.insert meta.name server
             in
                 { model | servers = servers_ } ! []
 
@@ -314,9 +315,9 @@ update msg model =
             let
                 model_ =
                     case getActive model of
-                        Just ( serverInfo, bufInfo ) ->
-                            setBuffer serverInfo
-                                { bufInfo | lastChecked = time }
+                        Just ( server, buf ) ->
+                            setBuffer server
+                                { buf | lastChecked = time }
                                 model
 
                         Nothing ->
@@ -331,7 +332,7 @@ update msg model =
 
                 serverMeta =
                     form_
-                        |> Maybe.andThen (Form.getOutput)
+                        |> Maybe.andThen Form.getOutput
             in
                 case ( formMsg, serverMeta ) of
                     ( Form.Submit, Just serverMeta ) ->
@@ -373,11 +374,11 @@ andThen msg ( model, cmd ) =
 
 batchMessage : List Msg -> Model -> ( Model, Cmd Msg )
 batchMessage msgs model =
-    List.foldr (andThen) ( model, Cmd.none ) msgs
+    List.foldr andThen ( model, Cmd.none ) msgs
 
 
-handleMessage : ServerInfo -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
-handleMessage serverInfo user target message ts model =
+handleMessage : Server -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
+handleMessage server user target message ts model =
     let
         target_ =
             if String.startsWith "#" target then
@@ -387,33 +388,42 @@ handleMessage serverInfo user target message ts model =
 
         nick =
             if user.isServer then
-                serverInfo.meta.name
+                server.meta.name
             else
                 user.nick
 
+        colorCodeRegex =
+            Regex.regex "\x03\\d{2}(?:,\\d{2})?"
+
+        -- FIXME: for now we just strip out color codes, but this
+        -- FIXME: should probably be supported.
+        stripped =
+            message
+                |> Regex.replace Regex.All colorCodeRegex (\_ -> "")
+
         newLine =
-            { ts = ts, nick = nick, message = message }
+            { ts = ts, nick = nick, message = stripped }
 
         newMsg =
-            AddLine target_ newLine |> modifyServer serverInfo
+            AddLine target_ newLine |> modifyServer server
 
         refreshMsg =
-            if Just ( serverInfo.meta.name, target_ ) == model.current then
+            if Just ( server.meta.name, target_ ) == model.current then
                 RefreshScroll False
             else
                 Noop
 
         scrollbackMsg =
-            if (not user.isServer) && serverInfo.meta.saveScrollback then
-                AddScrollback target_ newLine |> modifyServer serverInfo
+            if not user.isServer && server.meta.saveScrollback then
+                AddScrollback target_ newLine |> modifyServer server
             else
                 Noop
 
         model_ =
             if not user.isServer then
-                getBuffer serverInfo target
+                getBuffer server target
                     |> Maybe.map (setNickTimestamp nick ts)
-                    |> Maybe.map (\buf -> setBuffer serverInfo buf model)
+                    |> Maybe.map (\buf -> setBuffer server buf model)
                     |> Maybe.withDefault model
             else
                 model
@@ -421,40 +431,40 @@ handleMessage serverInfo user target message ts model =
         update (MultiMsg [ newMsg, refreshMsg, scrollbackMsg ]) model_
 
 
-handleCommand : ServerInfo -> Time.Time -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
-handleCommand serverInfo ts msg model =
+handleCommand : Server -> Time.Time -> Irc.ParsedMessage -> Model -> ( Model, Cmd Msg )
+handleCommand server ts msg model =
     case ( msg.command, msg.params ) of
         -- Clean out the buffers when we rejoin.
         ( "001", _ ) ->
             let
                 buffers_ =
-                    serverInfo.buffers
+                    server.buffers
                         |> Dict.map (\_ v -> { v | buffer = [] })
 
-                serverInfo_ =
-                    { serverInfo | buffers = buffers_ }
+                server_ =
+                    { server | buffers = buffers_ }
 
                 model_ =
                     model.servers
-                        |> Dict.insert serverInfo.meta.name serverInfo_
-                        |> \info -> { model | servers = info }
+                        |> Dict.insert server.meta.name server_
+                        |> (\servers -> { model | servers = servers })
             in
-                model_ ! [ Ports.requestScrollback serverInfo.meta.name ]
+                model_ ! [ Ports.requestScrollback server.meta.name ]
 
         ( "PING", params ) ->
             let
                 pong =
-                    ("PONG " ++ (String.concat params))
+                    "PONG " ++ String.concat params
             in
-                updateServer serverInfo (SendRawLine pong) model
+                updateServer server (SendRawLine pong) model
 
         ( "JOIN", [ channel ] ) ->
             let
                 weJoined =
-                    serverInfo.meta.nick == msg.user.nick
+                    server.meta.nick == msg.user.nick
 
                 buffer =
-                    getBuffer serverInfo channel
+                    getBuffer server channel
                         |> Maybe.withDefault (newBuffer channel)
                         |> addNicks [ msg.user.nick ]
 
@@ -466,31 +476,31 @@ handleCommand serverInfo ts msg model =
                         buffer.lastChecked
 
                 model_ =
-                    setBuffer serverInfo { buffer | lastChecked = lastChecked } model
+                    setBuffer server { buffer | lastChecked = lastChecked } model
 
                 current_ =
                     -- We want to switch to the channel if we haven't
                     -- joined anything else yet.
                     if weJoined && model.current == Nothing then
-                        Just ( serverInfo.meta.name, channel )
+                        Just ( server.meta.name, buffer.name )
                     else
                         model.current
             in
                 { model_ | current = current_ } ! []
 
         ( "PART", channel :: reason ) ->
-            case getBuffer serverInfo channel of
-                Just bufInfo ->
+            case getBuffer server channel of
+                Just buf ->
                     let
-                        bufInfo_ =
-                            removeNick msg.user.nick bufInfo
+                        buf_ =
+                            removeNick msg.user.nick buf
 
                         model_ =
-                            setBuffer serverInfo bufInfo_ model
+                            setBuffer server buf_ model
 
                         ( current, cmd ) =
-                            if serverInfo.meta.nick == msg.user.nick then
-                                ( Nothing, CloseBuffer channel |> modifyServer serverInfo )
+                            if server.meta.nick == msg.user.nick then
+                                ( Nothing, CloseBuffer channel |> modifyServer server )
                             else
                                 ( model.current, Noop )
                     in
@@ -505,18 +515,18 @@ handleCommand serverInfo ts msg model =
 
         ( "QUIT", _ ) ->
             let
-                serverInfo_ =
-                    serverInfo.buffers
+                server_ =
+                    server.buffers
                         |> Dict.map (\_ buf -> removeNick msg.user.nick buf)
-                        |> \buffers -> { serverInfo | buffers = buffers }
+                        |> (\buffers -> { server | buffers = buffers })
 
                 model_ =
-                    { model | servers = Dict.insert serverInfo.meta.name serverInfo model.servers }
+                    { model | servers = Dict.insert server.meta.name server model.servers }
             in
                 ( model_, Cmd.none )
 
         ( "PRIVMSG", [ target, message ] ) ->
-            handleMessage serverInfo msg.user target message ts model
+            handleMessage server msg.user target message ts model
 
         ( "NOTICE", [ target, message ] ) ->
             let
@@ -545,7 +555,7 @@ handleCommand serverInfo ts msg model =
                     else
                         "NOTICE: " ++ message
             in
-                handleMessage serverInfo msg.user target notice ts model
+                handleMessage server msg.user target notice ts model
 
         -- You have been marked as being away
         ( "306", _ ) ->
@@ -554,13 +564,13 @@ handleCommand serverInfo ts msg model =
         -- Channel topic
         ( "332", [ _, target, topic ] ) ->
             let
-                bufInfo =
-                    getOrCreateBuffer serverInfo target
+                buf =
+                    getOrCreateBuffer server target
 
-                bufInfo_ =
-                    { bufInfo | topic = Just topic }
+                buf_ =
+                    { buf | topic = Just topic }
             in
-                ( setBuffer serverInfo bufInfo_ model, Cmd.none )
+                ( setBuffer server buf_ model, Cmd.none )
 
         ( "333", _ ) ->
             model ! []
@@ -578,22 +588,22 @@ handleCommand serverInfo ts msg model =
                     stripSpecial usersString
                         |> String.words
 
-                bufInfo =
-                    getOrCreateBuffer serverInfo channel
+                buf =
+                    getOrCreateBuffer server channel
                         |> addNicks userList
 
                 model_ =
-                    setBuffer serverInfo bufInfo model
+                    setBuffer server buf model
             in
                 model_ ! []
 
         -- END of /NAMES
         ( "366", [ _, channel, _ ] ) ->
-            case getBuffer serverInfo channel of
-                Just bufInfo ->
+            case getBuffer server channel of
+                Just buf ->
                     let
                         users =
-                            case bufInfo.users of
+                            case buf.users of
                                 UsersLoading list ->
                                     list
                                         |> List.map (\nick -> ( nick, 0 ))
@@ -604,7 +614,7 @@ handleCommand serverInfo ts msg model =
                                     set
 
                         model_ =
-                            setBuffer serverInfo { bufInfo | users = users } model
+                            setBuffer server { buf | users = users } model
                     in
                         model_ ! []
 
@@ -618,19 +628,19 @@ handleCommand serverInfo ts msg model =
         ( "NICK", [ nick ] ) ->
             let
                 myNick =
-                    if msg.user.nick == serverInfo.meta.nick then
+                    if msg.user.nick == server.meta.nick then
                         nick
                     else
-                        serverInfo.meta.nick
+                        server.meta.nick
 
-                server =
-                    serverInfo.meta
-                        |> \m ->
-                            { m | nick = myNick }
-                                |> \m -> { serverInfo | meta = m }
+                serverMeta_ =
+                    server.meta |> (\meta -> { meta | nick = myNick })
+
+                server_ =
+                    { server | meta = serverMeta_ }
 
                 model_ =
-                    { model | servers = Dict.insert serverInfo.meta.name server model.servers }
+                    { model | servers = Dict.insert server.meta.name server_ model.servers }
             in
                 model_ ! []
 
@@ -650,7 +660,7 @@ handleCommand serverInfo ts msg model =
             in
                 update
                     (MultiMsg
-                        [ AddLine serverBufferName newLine |> modifyServer serverInfo
+                        [ AddLine serverBufferName newLine |> modifyServer server
                         , RefreshScroll False
                         ]
                     )
@@ -660,27 +670,27 @@ handleCommand serverInfo ts msg model =
 {-| Handle sending messages to the server (and all the slash commands
 and such that could be used)
 -}
-sendLine : ServerInfo -> BufferInfo -> String -> Model -> List Msg
-sendLine serverInfo bufInfo line model =
+sendLine : Server -> Buffer -> String -> Model -> List Msg
+sendLine server buf line model =
     let
         privmsg target msg =
             let
                 line =
                     { ts = model.currentTime
-                    , nick = serverInfo.meta.nick
+                    , nick = server.meta.nick
                     , message = msg
                     }
 
                 rawLine =
                     String.join " " [ "PRIVMSG", target, ":" ++ msg ]
             in
-                if bufInfo.isServer then
+                if buf.isServer then
                     addErrorMessage "use /quote to send messages directly to the server"
                 else
-                    [ SendRawLine rawLine |> modifyServer serverInfo
-                    , AddLine target line |> modifyServer serverInfo
-                    , if serverInfo.meta.saveScrollback then
-                        AddScrollback target line |> modifyServer serverInfo
+                    [ SendRawLine rawLine |> modifyServer server
+                    , AddLine target line |> modifyServer server
+                    , if server.meta.saveScrollback then
+                        AddScrollback target line |> modifyServer server
                       else
                         Noop
                     ]
@@ -711,7 +721,7 @@ sendLine serverInfo bufInfo line model =
                     , message = msg
                     }
             in
-                [ AddLine bufInfo.name line |> modifyServer serverInfo ]
+                [ AddLine buf.name line |> modifyServer server ]
 
         slashCommand cmd params =
             case ( String.toLower cmd, params ) of
@@ -720,7 +730,7 @@ sendLine serverInfo bufInfo line model =
                         [ SendRawLine ("JOIN " ++ channel)
                         , SelectBuffer channel
                         ]
-                            |> List.map (modifyServer serverInfo)
+                            |> List.map (modifyServer server)
                     else
                         addErrorMessage "channel names must begin with #"
 
@@ -728,30 +738,30 @@ sendLine serverInfo bufInfo line model =
                     if String.startsWith "#" nick then
                         addErrorMessage "can only initiate queries with users"
                     else
-                        [ modifyServer serverInfo (SelectBuffer nick) ]
+                        [ modifyServer server (SelectBuffer nick) ]
 
                 ( "/part", [] ) ->
-                    slashCommand "/part" [ bufInfo.name ]
+                    slashCommand "/part" [ buf.name ]
 
                 ( "/part", [ channel ] ) ->
-                    [ SendRawLine ("PART " ++ channel) |> modifyServer serverInfo
-                    , CloseBuffer channel |> modifyServer serverInfo
+                    [ SendRawLine ("PART " ++ channel) |> modifyServer server
+                    , CloseBuffer channel |> modifyServer server
                     ]
 
                 ( "/close", [] ) ->
-                    [ ClearBuffer bufInfo.name |> modifyServer serverInfo
-                    , CloseBuffer bufInfo.name |> modifyServer serverInfo
+                    [ ClearBuffer buf.name |> modifyServer server
+                    , CloseBuffer buf.name |> modifyServer server
                     ]
 
                 ( "/clear", [] ) ->
-                    [ ClearBuffer bufInfo.name |> modifyServer serverInfo ]
+                    [ ClearBuffer buf.name |> modifyServer server ]
 
                 ( "/me", rest ) ->
                     let
                         msg =
                             String.join " " rest
                     in
-                        ctcp bufInfo.name "ACTION" msg
+                        ctcp buf.name "ACTION" msg
 
                 ( "/privmsg", target :: rest ) ->
                     privmsg target (String.join " " rest)
@@ -768,13 +778,13 @@ sendLine serverInfo bufInfo line model =
                 ( "/names", [] ) ->
                     let
                         nickList =
-                            case bufInfo.users of
+                            case buf.users of
                                 UsersLoading list ->
                                     list
 
                                 UsersLoaded set ->
                                     Dict.toList set
-                                        |> List.map (Tuple.first)
+                                        |> List.map Tuple.first
 
                         nicks =
                             List.take 100 nickList
@@ -786,22 +796,22 @@ sendLine serverInfo bufInfo line model =
                         line =
                             { ts = model.currentTime
                             , message = String.join " " message
-                            , nick = bufInfo.name
+                            , nick = buf.name
                             }
                     in
-                        [ AddLine bufInfo.name line |> modifyServer serverInfo ]
+                        [ AddLine buf.name line |> modifyServer server ]
 
                 ( "/server", [ "save" ] ) ->
-                    [ modifyServer serverInfo StoreServer ]
+                    [ modifyServer server StoreServer ]
 
                 ( "/server", [ "delete" ] ) ->
-                    [ modifyServer serverInfo RemoveServer ]
+                    [ modifyServer server RemoveServer ]
 
                 ( "/server", [ "disconnect" ] ) ->
-                    [ modifyServer serverInfo DisconnectServer ]
+                    [ modifyServer server DisconnectServer ]
 
                 ( "/quote", rest ) ->
-                    [ SendRawLine (String.join " " rest) |> modifyServer serverInfo ]
+                    [ SendRawLine (String.join " " rest) |> modifyServer server ]
 
                 _ ->
                     addErrorMessage "unknown command, did you forget to /quote?"
@@ -811,4 +821,4 @@ sendLine serverInfo bufInfo line model =
                 slashCommand (commandAliases cmd) params
 
             _ ->
-                privmsg bufInfo.name line
+                privmsg buf.name line

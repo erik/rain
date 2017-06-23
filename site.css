@@ -1,5 +1,5 @@
 html {
-    line-height: 1.4rem;
+    line-height: 1.5;
     font-family: Avenir, Helvetica Neue, Helvetica, sans-serif;
     font-size: 16px;
     color: #222;
@@ -18,7 +18,9 @@ a, a:visited {
 
 h1 {
     font-weight: normal;
-    font-size: 1.728em;
+    font-size: 1.75em;
+    margin: 8px 0;
+    padding: 0;
 }
 
 .message-nick {
