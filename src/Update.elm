@@ -392,8 +392,17 @@ handleMessage server user target message ts model =
             else
                 user.nick
 
+        colorCodeRegex =
+            Regex.regex "\x03\\d{2}(?:,\\d{2})?"
+
+        -- FIXME: for now we just strip out color codes, but this
+        -- FIXME: should probably be supported.
+        stripped =
+            message
+                |> Regex.replace Regex.All colorCodeRegex (\_ -> "")
+
         newLine =
-            { ts = ts, nick = nick, message = message }
+            { ts = ts, nick = nick, message = stripped }
 
         newMsg =
             AddLine target_ newLine |> modifyServer server
