@@ -749,9 +749,12 @@ sendLine server buf line model =
                     ]
 
                 ( "/close", [] ) ->
-                    [ ClearBuffer buf.name |> modifyServer server
-                    , CloseBuffer buf.name |> modifyServer server
-                    ]
+                    if buf.isServer then
+                        addErrorMessage "use `/server disconnect` instead"
+                    else
+                        [ ClearBuffer buf.name |> modifyServer server
+                        , CloseBuffer buf.name |> modifyServer server
+                        ]
 
                 ( "/clear", [] ) ->
                     [ ClearBuffer buf.name |> modifyServer server ]
