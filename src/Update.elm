@@ -1,4 +1,4 @@
-module Update exposing (Msg(..), ServerMsg(..), update)
+module Update exposing (Msg(..), ServerMsg(..), update, commandDescriptions)
 
 import Debug
 import Dict
@@ -42,6 +42,26 @@ type Msg
     | Tick Time
     | TypeLine String
     | Noop
+
+
+commandDescriptions : List ( String, String )
+commandDescriptions =
+    [ ( "/server save", "save the configuration for the current server to localstorage" )
+    , ( "/server delete", "remove the current configuration from localstorage" )
+    , ( "/server disconnect", "close the IRC connection to the current server" )
+    , ( "/join #channel", "join and switch to #channel" )
+    , ( "/part", "leave the current channel" )
+    , ( "/part #channel", "leave #channel" )
+    , ( "/close", "close the current buffer window" )
+    , ( "/clear", "clear out the contents of the current buffer window" )
+    , ( "/ping nick", "send CTCP PING to nick" )
+    , ( "/names", "list the (first 100) users in the current channel" )
+    , ( "/ns", "shorthand to message NickServ" )
+    , ( "/cs", "shorthand to message ChanServ" )
+    , ( "/query nick", "open a direct message buffer window with nick" )
+    , ( "/quote something", "send \"something\" to the server directly" )
+    , ( "/help", "list available slash commands." )
+    ]
 
 
 modifyServer : Server -> ServerMsg -> Msg
@@ -812,6 +832,25 @@ sendLine server buf line model =
 
                 ( "/server", [ "disconnect" ] ) ->
                     [ modifyServer server DisconnectServer ]
+
+                ( "/help", _ ) ->
+                    let
+                        lines =
+                            commandDescriptions
+                                |> List.map (\( cmd, desc ) -> cmd ++ "\t--\t" ++ desc)
+                                |> List.map
+                                    (\line ->
+                                        { ts = model.currentTime
+                                        , message = line
+                                        , nick = buf.name
+                                        }
+                                    )
+
+                        cmds =
+                            List.map (AddLine buf.name) lines
+                                |> List.map (modifyServer server)
+                    in
+                        cmds
 
                 ( "/quote", rest ) ->
                     [ SendRawLine (String.join " " rest) |> modifyServer server ]
