@@ -12202,13 +12202,13 @@ var _user$project$Update$sendLine = F4(
 											_0: A2(
 												_user$project$Update$modifyServer,
 												server,
-												_user$project$Update$ClearBuffer(buf.name)),
+												_user$project$Update$CloseBuffer(buf.name)),
 											_1: {
 												ctor: '::',
 												_0: A2(
 													_user$project$Update$modifyServer,
 													server,
-													_user$project$Update$CloseBuffer(buf.name)),
+													_user$project$Update$ClearBuffer(buf.name)),
 												_1: {ctor: '[]'}
 											}
 										};
