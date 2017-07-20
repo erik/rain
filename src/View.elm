@@ -125,6 +125,9 @@ hasUnread buf =
 viewBufferList : Model -> Html Msg
 viewBufferList model =
     let
+        isCurrent serverName bufferName =
+            model.current == Just ( serverName, bufferName )
+
         viewBuf serverName buf =
             li
                 [ onClick (ModifyServer serverName (SelectBuffer buf.name))
@@ -132,6 +135,7 @@ viewBufferList model =
                     [ ( "clickable", True )
                     , ( "unread", hasUnread buf )
                     , ( "buffer-list-item", True )
+                    , ( "current-buffer", isCurrent serverName buf.name )
                     ]
                 ]
                 [ text buf.name ]

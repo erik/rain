@@ -52,6 +52,10 @@ hr {
     font-weight: 900;
 }
 
+.current-buffer::after {
+    content: " •";
+}
+
 .clickable {
     cursor: pointer;
 }
