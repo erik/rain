@@ -13707,6 +13707,13 @@ var _user$project$View$viewBufferList = function (model) {
 			_0: _elm_lang$html$Html$text('add server'),
 			_1: {ctor: '[]'}
 		});
+	var isCurrent = F2(
+		function (serverName, bufferName) {
+			return _elm_lang$core$Native_Utils.eq(
+				model.current,
+				_elm_lang$core$Maybe$Just(
+					{ctor: '_Tuple2', _0: serverName, _1: bufferName}));
+		});
 	var viewBuf = F2(
 		function (serverName, buf) {
 			return A2(
@@ -13734,7 +13741,15 @@ var _user$project$View$viewBufferList = function (model) {
 									_1: {
 										ctor: '::',
 										_0: {ctor: '_Tuple2', _0: 'buffer-list-item', _1: true},
-										_1: {ctor: '[]'}
+										_1: {
+											ctor: '::',
+											_0: {
+												ctor: '_Tuple2',
+												_0: 'current-buffer',
+												_1: A2(isCurrent, serverName, buf.name)
+											},
+											_1: {ctor: '[]'}
+										}
 									}
 								}
 							}),
