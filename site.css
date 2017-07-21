@@ -23,6 +23,10 @@ h1 {
     padding: 0;
 }
 
+hr {
+    opacity: 0;
+}
+
 .message-nick {
     font-weight: bold;
 }
@@ -46,6 +50,10 @@ h1 {
 
 .unread {
     font-weight: 900;
+}
+
+.current-buffer::after {
+    content: " •";
 }
 
 .clickable {
