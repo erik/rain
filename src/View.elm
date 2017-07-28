@@ -11,7 +11,7 @@ import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
 import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Json.Decode as Json
 import Model exposing (..)
-import Regex exposing (HowMany(All), regex)
+import Regex exposing (HowMany(All, AtMost), regex)
 import Update exposing (Msg(..), ServerMsg(..))
 
 
@@ -293,17 +293,27 @@ viewLineGroup serverMeta group =
 linkifyLine : String -> List (Html msg)
 linkifyLine line =
     let
-        words =
-            String.split " " line
+        -- Simple approximation of one at least.
+        linkRegex =
+            regex "\\b(\\w+://[-\\w@:%._\\+~#=/]+)\\b"
 
-        linkify word =
-            if String.contains "://" word then
-                a [ href word, target "_blank" ] [ text word ]
-            else
-                text word
+        linkify word url =
+            a [ href url, target "_blank" ] [ text word ]
+
+        applyMarkup word =
+            case Regex.find (AtMost 1) linkRegex word of
+                [] ->
+                    text word
+
+                url :: [] ->
+                    linkify word url.match
+
+                _ ->
+                    Debug.crash ("Linkify failed on" ++ word)
     in
-        words
-            |> List.map linkify
+        line
+            |> String.split " "
+            |> List.map applyMarkup
             |> List.intersperse (span [] [ text " " ])
 
 
