@@ -13301,25 +13301,49 @@ var _user$project$Update$handleMessage = F6(
 	});
 
 var _user$project$View$linkifyLine = function (line) {
-	var linkify = function (word) {
-		return A2(_elm_lang$core$String$contains, '://', word) ? A2(
-			_elm_lang$html$Html$a,
-			{
-				ctor: '::',
-				_0: _elm_lang$html$Html_Attributes$href(word),
-				_1: {
+	var linkify = F2(
+		function (word, url) {
+			return A2(
+				_elm_lang$html$Html$a,
+				{
 					ctor: '::',
-					_0: _elm_lang$html$Html_Attributes$target('_blank'),
+					_0: _elm_lang$html$Html_Attributes$href(url),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$target('_blank'),
+						_1: {ctor: '[]'}
+					}
+				},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text(word),
 					_1: {ctor: '[]'}
-				}
-			},
-			{
-				ctor: '::',
-				_0: _elm_lang$html$Html$text(word),
-				_1: {ctor: '[]'}
-			}) : _elm_lang$html$Html$text(word);
+				});
+		});
+	var linkRegex = _elm_lang$core$Regex$regex('\\b(\\w+://[-\\w@:%._\\+~#=/]+)\\b');
+	var applyMarkup = function (word) {
+		var _p0 = A3(
+			_elm_lang$core$Regex$find,
+			_elm_lang$core$Regex$AtMost(1),
+			linkRegex,
+			word);
+		if (_p0.ctor === '[]') {
+			return _elm_lang$html$Html$text(word);
+		} else {
+			if (_p0._1.ctor === '[]') {
+				return A2(linkify, word, _p0._0.match);
+			} else {
+				return _elm_lang$core$Native_Utils.crashCase(
+					'View',
+					{
+						start: {line: 304, column: 13},
+						end: {line: 312, column: 62}
+					},
+					_p0)(
+					A2(_elm_lang$core$Basics_ops['++'], 'Linkify failed on', word));
+			}
+		}
 	};
-	var words = A2(_elm_lang$core$String$split, ' ', line);
 	return A2(
 		_elm_lang$core$List$intersperse,
 		A2(
@@ -13330,7 +13354,10 @@ var _user$project$View$linkifyLine = function (line) {
 				_0: _elm_lang$html$Html$text(' '),
 				_1: {ctor: '[]'}
 			}),
-		A2(_elm_lang$core$List$map, linkify, words));
+		A2(
+			_elm_lang$core$List$map,
+			applyMarkup,
+			A2(_elm_lang$core$String$split, ' ', line)));
 };
 var _user$project$View$formatLine = F2(
 	function (nick, line) {
@@ -13358,16 +13385,16 @@ var _user$project$View$formatLine = F2(
 					'\\b',
 					A2(_elm_lang$core$Basics_ops['++'], nick, '\\b'))),
 			line.message);
-		var _p0 = function () {
-			var _p1 = A2(
+		var _p2 = function () {
+			var _p3 = A2(
 				_elm_lang$core$String$split,
 				A2(_elm_lang$core$Basics_ops['++'], '', 'ACTION'),
 				line.message);
-			if ((_p1.ctor === '::') && (_p1._0 === '')) {
+			if ((_p3.ctor === '::') && (_p3._0 === '')) {
 				var message = A2(
 					_elm_lang$core$String$dropRight,
 					1,
-					_elm_lang$core$String$concat(_p1._1));
+					_elm_lang$core$String$concat(_p3._1));
 				return {
 					ctor: '_Tuple2',
 					_0: A2(
@@ -13388,8 +13415,8 @@ var _user$project$View$formatLine = F2(
 				return {ctor: '_Tuple2', _0: line.message, _1: false};
 			}
 		}();
-		var message = _p0._0;
-		var isAction = _p0._1;
+		var message = _p2._0;
+		var isAction = _p2._1;
 		var linkified = _user$project$View$linkifyLine(message);
 		var timeStr = A2(
 			_mgold$elm_date_format$Date_Format$format,
@@ -13780,9 +13807,9 @@ var _user$project$View$viewBufferList = function (model) {
 	};
 	var serverList = A2(
 		_elm_lang$core$List$map,
-		function (_p2) {
-			var _p3 = _p2;
-			var _p4 = _p3._0;
+		function (_p4) {
+			var _p5 = _p4;
+			var _p6 = _p5._0;
 			return A2(
 				_elm_lang$html$Html$div,
 				{ctor: '[]'},
@@ -13810,13 +13837,13 @@ var _user$project$View$viewBufferList = function (model) {
 										_0: _elm_lang$html$Html_Events$onClick(
 											A2(
 												_user$project$Update$ModifyServer,
-												_p4,
+												_p6,
 												_user$project$Update$SelectBuffer(_user$project$Model$serverBufferName))),
 										_1: {ctor: '[]'}
 									},
 									{
 										ctor: '::',
-										_0: _elm_lang$html$Html$text(_p4),
+										_0: _elm_lang$html$Html$text(_p6),
 										_1: {ctor: '[]'}
 									}),
 								_1: {
@@ -13824,7 +13851,7 @@ var _user$project$View$viewBufferList = function (model) {
 									_0: A2(
 										_elm_lang$html$Html$ul,
 										{ctor: '[]'},
-										bufferList(_p3._1)),
+										bufferList(_p5._1)),
 									_1: {ctor: '[]'}
 								}
 							}),
@@ -13907,8 +13934,8 @@ var _user$project$View$viewForm = function (form) {
 	};
 	var inputsHtml = A2(
 		_elm_lang$core$List$map,
-		function (_p5) {
-			var _p6 = _p5;
+		function (_p7) {
+			var _p8 = _p7;
 			return A2(
 				_elm_lang$html$Html$div,
 				{
@@ -13923,17 +13950,17 @@ var _user$project$View$viewForm = function (form) {
 						{ctor: '[]'},
 						{
 							ctor: '::',
-							_0: _elm_lang$html$Html$text(_p6._1),
+							_0: _elm_lang$html$Html$text(_p8._1),
 							_1: {ctor: '[]'}
 						}),
 					_1: {
 						ctor: '::',
 						_0: A2(
-							_p6._0,
-							A2(_etaque$elm_form$Form$getFieldAsString, _p6._2, form),
+							_p8._0,
+							A2(_etaque$elm_form$Form$getFieldAsString, _p8._2, form),
 							{
 								ctor: '::',
-								_0: _elm_lang$html$Html_Attributes$placeholder(_p6._3),
+								_0: _elm_lang$html$Html_Attributes$placeholder(_p8._3),
 								_1: {ctor: '[]'}
 							}),
 						_1: {ctor: '[]'}
@@ -14007,11 +14034,11 @@ var _user$project$View$viewHelpText = function () {
 		{ctor: '[]'},
 		A2(
 			_elm_lang$core$List$map,
-			function (_p7) {
+			function (_p9) {
 				return A2(
 					_elm_lang$html$Html$li,
 					{ctor: '[]'},
-					_user$project$View$linkifyLine(_p7));
+					_user$project$View$linkifyLine(_p9));
 			},
 			{
 				ctor: '::',
@@ -14035,8 +14062,8 @@ var _user$project$View$viewHelpText = function () {
 		{ctor: '[]'},
 		A2(
 			_elm_lang$core$List$map,
-			function (_p8) {
-				var _p9 = _p8;
+			function (_p10) {
+				var _p11 = _p10;
 				return A2(
 					_elm_lang$html$Html$li,
 					{ctor: '[]'},
@@ -14051,7 +14078,7 @@ var _user$project$View$viewHelpText = function () {
 							},
 							{
 								ctor: '::',
-								_0: _elm_lang$html$Html$text(_p9._0),
+								_0: _elm_lang$html$Html$text(_p11._0),
 								_1: {ctor: '[]'}
 							}),
 						_1: {
@@ -14065,7 +14092,7 @@ var _user$project$View$viewHelpText = function () {
 								},
 								{
 									ctor: '::',
-									_0: _elm_lang$html$Html$text(_p9._1),
+									_0: _elm_lang$html$Html$text(_p11._1),
 									_1: {ctor: '[]'}
 								}),
 							_1: {ctor: '[]'}
@@ -14143,28 +14170,28 @@ var _user$project$View$viewHelpText = function () {
 }();
 var _user$project$View$view = function (model) {
 	var chatView = function () {
-		var _p10 = {
+		var _p12 = {
 			ctor: '_Tuple2',
 			_0: model.newServerForm,
 			_1: _user$project$Model$getActive(model)
 		};
-		_v4_2:
+		_v5_2:
 		do {
-			if (_p10.ctor === '_Tuple2') {
-				if (_p10._0.ctor === 'Just') {
+			if (_p12.ctor === '_Tuple2') {
+				if (_p12._0.ctor === 'Just') {
 					return A2(
 						_elm_lang$html$Html$map,
 						_user$project$Update$FormMsg,
-						_user$project$View$viewForm(_p10._0._0));
+						_user$project$View$viewForm(_p12._0._0));
 				} else {
-					if ((_p10._1.ctor === 'Just') && (_p10._1._0.ctor === '_Tuple2')) {
-						return A3(_user$project$View$viewBuffer, model, _p10._1._0._0, _p10._1._0._1);
+					if ((_p12._1.ctor === 'Just') && (_p12._1._0.ctor === '_Tuple2')) {
+						return A3(_user$project$View$viewBuffer, model, _p12._1._0._0, _p12._1._0._1);
 					} else {
-						break _v4_2;
+						break _v5_2;
 					}
 				}
 			} else {
-				break _v4_2;
+				break _v5_2;
 			}
 		} while(false);
 		return _user$project$View$viewHelpText;
