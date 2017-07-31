@@ -1,7 +1,7 @@
-html {
+* {
     line-height: 1.5;
     font-family: Avenir, Helvetica Neue, Helvetica, sans-serif;
-    font-size: 16px;
+    font-size: 14px;
     color: #222;
 }
 
@@ -63,11 +63,16 @@ hr {
 .timestamp {
     float: right;
     color: #a0a0a0;
+    font-size: 12px;
 }
 
 .copy-text {
     font-size: 0;
     color: rgba(0,0,0,0);
+}
+
+.group {
+    padding-bottom: .5ch;
 }
 
 .group-messages {
