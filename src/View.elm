@@ -295,7 +295,7 @@ linkifyLine line =
     let
         -- Simple approximation of one at least.
         linkRegex =
-            regex "\\b(\\w+://[-\\w@:%._\\+~#=/]+)\\b"
+            regex "\\b(\\w+://[-\\w@:%._\\+~#=/\\?]+)\\b"
 
         linkify word url =
             a [ href url, target "_blank" ] [ text word ]
