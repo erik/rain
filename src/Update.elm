@@ -56,6 +56,7 @@ commandDescriptions =
     , ( "/clear", "clear out the contents of the current buffer window" )
     , ( "/ping nick", "send CTCP PING to nick" )
     , ( "/names", "list the (first 100) users in the current channel" )
+    , ( "/nick newNick", "changes current nick to newNick" )
     , ( "/ns", "shorthand to message NickServ" )
     , ( "/cs", "shorthand to message ChanServ" )
     , ( "/query nick", "open a direct message buffer window with nick" )
@@ -851,6 +852,9 @@ sendLine server buf line model =
                                 |> List.map (modifyServer server)
                     in
                         cmds
+
+                ( "/nick", [ nick ] ) ->
+                    [ SendRawLine ("NICK " ++ nick) |> modifyServer server ]
 
                 ( "/quote", rest ) ->
                     [ SendRawLine (String.join " " rest) |> modifyServer server ]
