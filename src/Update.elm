@@ -829,7 +829,9 @@ sendLine server buf line model =
                     [ modifyServer server StoreServer ]
 
                 ( "/server", [ "delete" ] ) ->
-                    [ modifyServer server RemoveServer ]
+                    [ modifyServer server DisconnectServer
+                    , modifyServer server RemoveServer
+                    ]
 
                 ( "/server", [ "disconnect" ] ) ->
                     [ modifyServer server DisconnectServer ]
