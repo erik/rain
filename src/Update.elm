@@ -294,7 +294,7 @@ update msg model =
                 queryString =
                     [ ( "host", meta.server )
                     , ( "port", meta.port_ )
-                    , ( "proxyPass", meta.proxyPass )
+                    , ( "proxyPass", meta.proxyPass |> Maybe.withDefault "" )
                     , ( "name", meta.name )
                     ]
                         |> List.map (\( k, v ) -> k ++ "=" ++ Http.encodeUri v)
@@ -303,16 +303,9 @@ update msg model =
                 socketUrl =
                     String.concat [ meta.proxyHost, "?", queryString ]
 
-                pass =
-                    -- TODO: meta.pass should be a maybe in the first place.
-                    if meta.pass == "" then
-                        Nothing
-                    else
-                        Just meta.pass
-
                 server =
                     { socket = socketUrl
-                    , pass = pass
+                    , pass = meta.pass
                     , meta = meta
                     , buffers = Dict.empty
                     }
