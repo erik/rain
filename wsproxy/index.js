@@ -1,6 +1,7 @@
 /*jshint esversion: 6 */
 
 const tls = require('tls');
+const net = require('net');
 const url = require('url');
 
 const WebSocket = require('ws');
@@ -23,19 +24,32 @@ wss.on('connection', function connection(ws) {
         return ws.send(`Bad password`);
     }
 
-    const socket = tls.connect({
-        host: query.host,
-        port: +query.port,
-        rejectUnauthorized: false
-    }, function () { console.log('connected to', query.host, query.port); })
-          .setEncoding('utf8')
-          .on('data', (data) => {
-              data.trim().split(/[\r\n]+/g).forEach(line => {
-                  console.log('<--', line);
-                  ws.send(line + '\n');
-              });
-          })
-          .on('end', () => { ws.close(); });
+    let socket;
+
+    // This is a TLS connection
+    if (query.port.startsWith('+')) {
+        socket = tls.connect({
+            host: query.host,
+            port: +query.port,
+            rejectUnauthorized: false
+        }, () => {
+            console.log('[TLS] connected to', query.host, query.port);
+        });
+    } else {
+        socket = new net.Socket();
+        socket.connect(+query.port, query.host, () => {
+            console.log('connected to', query.host, query.port);
+        });
+    }
+
+    socket.setEncoding('utf8')
+        .on('data', (data) => {
+            data.trim().split(/[\r\n]+/g).forEach(line => {
+                console.log('<--', line);
+                ws.send(line + '\n');
+            });
+        })
+        .on('end', () => { ws.close(); });
 
     ws.send('AUTHENTICATE\n');
 
@@ -56,7 +70,7 @@ setInterval(() => {
     wss.clients.forEach((ws) => {
         if (!ws.isAlive) return ws.terminate();
 
-	ws.isAlive = false;
-	ws.ping('', false, true);
+        ws.isAlive = false;
+        ws.ping('', false, true);
     });
 }, 15 * 1000);

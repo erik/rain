@@ -56,6 +56,7 @@ commandDescriptions =
     , ( "/clear", "clear out the contents of the current buffer window" )
     , ( "/ping nick", "send CTCP PING to nick" )
     , ( "/names", "list the (first 100) users in the current channel" )
+    , ( "/nick newNick", "changes current nick to newNick" )
     , ( "/ns", "shorthand to message NickServ" )
     , ( "/cs", "shorthand to message ChanServ" )
     , ( "/query nick", "open a direct message buffer window with nick" )
@@ -89,7 +90,7 @@ updateServer server msg model =
 
                 isDirectMessage =
                     (server.meta.nick /= line.nick)
-                        && not (String.startsWith "#" bufferName)
+                        && not (targetIsChannel bufferName)
 
                 body =
                     String.concat [ "<", line.nick, ">: ", line.message ]
@@ -293,7 +294,7 @@ update msg model =
                 queryString =
                     [ ( "host", meta.server )
                     , ( "port", meta.port_ )
-                    , ( "proxyPass", meta.proxyPass )
+                    , ( "proxyPass", meta.proxyPass |> Maybe.withDefault "" )
                     , ( "name", meta.name )
                     ]
                         |> List.map (\( k, v ) -> k ++ "=" ++ Http.encodeUri v)
@@ -302,16 +303,9 @@ update msg model =
                 socketUrl =
                     String.concat [ meta.proxyHost, "?", queryString ]
 
-                pass =
-                    -- TODO: meta.pass should be a maybe in the first place.
-                    if meta.pass == "" then
-                        Nothing
-                    else
-                        Just meta.pass
-
                 server =
                     { socket = socketUrl
-                    , pass = pass
+                    , pass = meta.pass
                     , meta = meta
                     , buffers = Dict.empty
                     }
@@ -397,11 +391,17 @@ batchMessage msgs model =
     List.foldr andThen ( model, Cmd.none ) msgs
 
 
+targetIsChannel : String -> Bool
+targetIsChannel target =
+    (String.startsWith "#" target)
+        || (String.startsWith "&" target)
+
+
 handleMessage : Server -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
 handleMessage server user target message ts model =
     let
         target_ =
-            if String.startsWith "#" target then
+            if targetIsChannel target then
                 target
             else
                 user.nick
@@ -746,7 +746,7 @@ sendLine server buf line model =
         slashCommand cmd params =
             case ( String.toLower cmd, params ) of
                 ( "/join", [ channel ] ) ->
-                    if String.startsWith "#" channel then
+                    if targetIsChannel channel then
                         [ SendRawLine ("JOIN " ++ channel)
                         , SelectBuffer channel
                         ]
@@ -755,7 +755,7 @@ sendLine server buf line model =
                         addErrorMessage "channel names must begin with #"
 
                 ( "/query", [ nick ] ) ->
-                    if String.startsWith "#" nick then
+                    if targetIsChannel nick then
                         addErrorMessage "can only initiate queries with users"
                     else
                         [ modifyServer server (SelectBuffer nick) ]
@@ -828,7 +828,9 @@ sendLine server buf line model =
                     [ modifyServer server StoreServer ]
 
                 ( "/server", [ "delete" ] ) ->
-                    [ modifyServer server RemoveServer ]
+                    [ modifyServer server DisconnectServer
+                    , modifyServer server RemoveServer
+                    ]
 
                 ( "/server", [ "disconnect" ] ) ->
                     [ modifyServer server DisconnectServer ]
@@ -851,6 +853,9 @@ sendLine server buf line model =
                                 |> List.map (modifyServer server)
                     in
                         cmds
+
+                ( "/nick", [ nick ] ) ->
+                    [ SendRawLine ("NICK " ++ nick) |> modifyServer server ]
 
                 ( "/quote", rest ) ->
                     [ SendRawLine (String.join " " rest) |> modifyServer server ]

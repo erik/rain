@@ -76,7 +76,7 @@ viewForm form =
             , ( Input.passwordInput, "WebSocket proxy password:", "proxyPass", "" )
             , ( Input.textInput, "IRC server name:", "name", "freenode" )
             , ( Input.textInput, "IRC server host:", "server", "irc.freenote.net" )
-            , ( Input.textInput, "IRC server port:", "port_", "6697" )
+            , ( Input.textInput, "IRC server port:", "port_", "6697, (TLS: +6697)" )
             , ( Input.passwordInput, "IRC server password", "pass", "" )
             , ( Input.textInput, "Nick", "nick", "rain`" )
             ]
