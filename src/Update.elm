@@ -90,7 +90,7 @@ updateServer server msg model =
 
                 isDirectMessage =
                     (server.meta.nick /= line.nick)
-                        && not (String.startsWith "#" bufferName)
+                        && not (targetIsChannel bufferName)
 
                 body =
                     String.concat [ "<", line.nick, ">: ", line.message ]
@@ -391,11 +391,17 @@ batchMessage msgs model =
     List.foldr andThen ( model, Cmd.none ) msgs
 
 
+targetIsChannel : String -> Bool
+targetIsChannel target =
+    (String.startsWith "#" target)
+        || (String.startsWith "&" target)
+
+
 handleMessage : Server -> UserInfo -> String -> String -> Time.Time -> Model -> ( Model, Cmd Msg )
 handleMessage server user target message ts model =
     let
         target_ =
-            if String.startsWith "#" target then
+            if targetIsChannel target then
                 target
             else
                 user.nick
@@ -740,7 +746,7 @@ sendLine server buf line model =
         slashCommand cmd params =
             case ( String.toLower cmd, params ) of
                 ( "/join", [ channel ] ) ->
-                    if String.startsWith "#" channel then
+                    if targetIsChannel channel then
                         [ SendRawLine ("JOIN " ++ channel)
                         , SelectBuffer channel
                         ]
@@ -749,7 +755,7 @@ sendLine server buf line model =
                         addErrorMessage "channel names must begin with #"
 
                 ( "/query", [ nick ] ) ->
-                    if String.startsWith "#" nick then
+                    if targetIsChannel nick then
                         addErrorMessage "can only initiate queries with users"
                     else
                         [ modifyServer server (SelectBuffer nick) ]
