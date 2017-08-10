@@ -11492,11 +11492,17 @@ var _user$project$Model$newServerValidation = A9(
 	_etaque$elm_form$Form_Validate$map8,
 	_user$project$Model$ServerMetadata,
 	A2(_etaque$elm_form$Form_Validate$field, 'proxyHost', _etaque$elm_form$Form_Validate$string),
-	A2(_etaque$elm_form$Form_Validate$field, 'proxyPass', _etaque$elm_form$Form_Validate$string),
+	A2(
+		_etaque$elm_form$Form_Validate$field,
+		'proxyPass',
+		_etaque$elm_form$Form_Validate$maybe(_etaque$elm_form$Form_Validate$string)),
 	A2(_etaque$elm_form$Form_Validate$field, 'server', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'port_', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'nick', _etaque$elm_form$Form_Validate$string),
-	A2(_etaque$elm_form$Form_Validate$field, 'pass', _etaque$elm_form$Form_Validate$string),
+	A2(
+		_etaque$elm_form$Form_Validate$field,
+		'pass',
+		_etaque$elm_form$Form_Validate$maybe(_etaque$elm_form$Form_Validate$string)),
 	A2(_etaque$elm_form$Form_Validate$field, 'name', _etaque$elm_form$Form_Validate$string),
 	A2(_etaque$elm_form$Form_Validate$field, 'saveScrollback', _etaque$elm_form$Form_Validate$bool));
 var _user$project$Model$Server = F4(
@@ -11791,7 +11797,19 @@ var _user$project$Ports$addSavedServer = _elm_lang$core$Native_Platform.incoming
 														},
 														A2(_elm_lang$core$Json_Decode$field, 'name', _elm_lang$core$Json_Decode$string));
 												},
-												A2(_elm_lang$core$Json_Decode$field, 'pass', _elm_lang$core$Json_Decode$string));
+												A2(
+													_elm_lang$core$Json_Decode$field,
+													'pass',
+													_elm_lang$core$Json_Decode$oneOf(
+														{
+															ctor: '::',
+															_0: _elm_lang$core$Json_Decode$null(_elm_lang$core$Maybe$Nothing),
+															_1: {
+																ctor: '::',
+																_0: A2(_elm_lang$core$Json_Decode$map, _elm_lang$core$Maybe$Just, _elm_lang$core$Json_Decode$string),
+																_1: {ctor: '[]'}
+															}
+														})));
 										},
 										A2(_elm_lang$core$Json_Decode$field, 'nick', _elm_lang$core$Json_Decode$string));
 								},
@@ -11799,7 +11817,19 @@ var _user$project$Ports$addSavedServer = _elm_lang$core$Native_Platform.incoming
 						},
 						A2(_elm_lang$core$Json_Decode$field, 'server', _elm_lang$core$Json_Decode$string));
 				},
-				A2(_elm_lang$core$Json_Decode$field, 'proxyPass', _elm_lang$core$Json_Decode$string));
+				A2(
+					_elm_lang$core$Json_Decode$field,
+					'proxyPass',
+					_elm_lang$core$Json_Decode$oneOf(
+						{
+							ctor: '::',
+							_0: _elm_lang$core$Json_Decode$null(_elm_lang$core$Maybe$Nothing),
+							_1: {
+								ctor: '::',
+								_0: A2(_elm_lang$core$Json_Decode$map, _elm_lang$core$Maybe$Just, _elm_lang$core$Json_Decode$string),
+								_1: {ctor: '[]'}
+							}
+						})));
 		},
 		A2(_elm_lang$core$Json_Decode$field, 'proxyHost', _elm_lang$core$Json_Decode$string)));
 var _user$project$Ports$receiveScrollback = _elm_lang$core$Native_Platform.incomingPort(
@@ -11844,7 +11874,16 @@ var _user$project$Ports$modifyServerStore = _elm_lang$core$Native_Platform.outgo
 	'modifyServerStore',
 	function (v) {
 		return [
-			{proxyHost: v._0.proxyHost, proxyPass: v._0.proxyPass, server: v._0.server, port_: v._0.port_, nick: v._0.nick, pass: v._0.pass, name: v._0.name, saveScrollback: v._0.saveScrollback},
+			{
+			proxyHost: v._0.proxyHost,
+			proxyPass: (v._0.proxyPass.ctor === 'Nothing') ? null : v._0.proxyPass._0,
+			server: v._0.server,
+			port_: v._0.port_,
+			nick: v._0.nick,
+			pass: (v._0.pass.ctor === 'Nothing') ? null : v._0.pass._0,
+			name: v._0.name,
+			saveScrollback: v._0.saveScrollback
+		},
 			v._1
 		];
 	});
@@ -11878,6 +11917,9 @@ var _user$project$Ports$refreshScrollPosition = _elm_lang$core$Native_Platform.o
 		return v;
 	});
 
+var _user$project$Update$targetIsChannel = function (target) {
+	return A2(_elm_lang$core$String$startsWith, '#', target) || A2(_elm_lang$core$String$startsWith, '&', target);
+};
 var _user$project$Update$commandDescriptions = {
 	ctor: '::',
 	_0: {ctor: '_Tuple2', _0: '/server save', _1: 'save the configuration for the current server to localstorage'},
@@ -11910,20 +11952,24 @@ var _user$project$Update$commandDescriptions = {
 										_0: {ctor: '_Tuple2', _0: '/names', _1: 'list the (first 100) users in the current channel'},
 										_1: {
 											ctor: '::',
-											_0: {ctor: '_Tuple2', _0: '/ns', _1: 'shorthand to message NickServ'},
+											_0: {ctor: '_Tuple2', _0: '/nick newNick', _1: 'changes current nick to newNick'},
 											_1: {
 												ctor: '::',
-												_0: {ctor: '_Tuple2', _0: '/cs', _1: 'shorthand to message ChanServ'},
+												_0: {ctor: '_Tuple2', _0: '/ns', _1: 'shorthand to message NickServ'},
 												_1: {
 													ctor: '::',
-													_0: {ctor: '_Tuple2', _0: '/query nick', _1: 'open a direct message buffer window with nick'},
+													_0: {ctor: '_Tuple2', _0: '/cs', _1: 'shorthand to message ChanServ'},
 													_1: {
 														ctor: '::',
-														_0: {ctor: '_Tuple2', _0: '/quote something', _1: 'send \"something\" to the server directly'},
+														_0: {ctor: '_Tuple2', _0: '/query nick', _1: 'open a direct message buffer window with nick'},
 														_1: {
 															ctor: '::',
-															_0: {ctor: '_Tuple2', _0: '/help', _1: 'list available slash commands.'},
-															_1: {ctor: '[]'}
+															_0: {ctor: '_Tuple2', _0: '/quote something', _1: 'send \"something\" to the server directly'},
+															_1: {
+																ctor: '::',
+																_0: {ctor: '_Tuple2', _0: '/help', _1: 'list available slash commands.'},
+																_1: {ctor: '[]'}
+															}
 														}
 													}
 												}
@@ -12124,14 +12170,14 @@ var _user$project$Update$sendLine = F4(
 						_0: _elm_lang$core$String$toLower(cmd),
 						_1: params
 					};
-					_v0_17:
+					_v0_18:
 					do {
 						if (_p0.ctor === '_Tuple2') {
 							switch (_p0._0) {
 								case '/join':
 									if ((_p0._1.ctor === '::') && (_p0._1._1.ctor === '[]')) {
 										var _p1 = _p0._1._0;
-										return A2(_elm_lang$core$String$startsWith, '#', _p1) ? A2(
+										return _user$project$Update$targetIsChannel(_p1) ? A2(
 											_elm_lang$core$List$map,
 											_user$project$Update$modifyServer(server),
 											{
@@ -12145,12 +12191,12 @@ var _user$project$Update$sendLine = F4(
 												}
 											}) : addErrorMessage('channel names must begin with #');
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/query':
 									if ((_p0._1.ctor === '::') && (_p0._1._1.ctor === '[]')) {
 										var _p2 = _p0._1._0;
-										return A2(_elm_lang$core$String$startsWith, '#', _p2) ? addErrorMessage('can only initiate queries with users') : {
+										return _user$project$Update$targetIsChannel(_p2) ? addErrorMessage('can only initiate queries with users') : {
 											ctor: '::',
 											_0: A2(
 												_user$project$Update$modifyServer,
@@ -12159,7 +12205,7 @@ var _user$project$Update$sendLine = F4(
 											_1: {ctor: '[]'}
 										};
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/part':
 									if (_p0._1.ctor === '[]') {
@@ -12192,7 +12238,7 @@ var _user$project$Update$sendLine = F4(
 												}
 											};
 										} else {
-											break _v0_17;
+											break _v0_18;
 										}
 									}
 								case '/close':
@@ -12213,7 +12259,7 @@ var _user$project$Update$sendLine = F4(
 											}
 										};
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/clear':
 									if (_p0._1.ctor === '[]') {
@@ -12226,7 +12272,7 @@ var _user$project$Update$sendLine = F4(
 											_1: {ctor: '[]'}
 										};
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/me':
 									var msg = A2(_elm_lang$core$String$join, ' ', _p0._1);
@@ -12238,7 +12284,7 @@ var _user$project$Update$sendLine = F4(
 											_p0._1._0,
 											A2(_elm_lang$core$String$join, ' ', _p0._1._1));
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/ping':
 									if ((_p0._1.ctor === '::') && (_p0._1._1.ctor === '[]')) {
@@ -12248,7 +12294,7 @@ var _user$project$Update$sendLine = F4(
 											'PING',
 											_elm_lang$core$Basics$toString(model.currentTime));
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/ns':
 									return A2(
@@ -12301,7 +12347,7 @@ var _user$project$Update$sendLine = F4(
 											_1: {ctor: '[]'}
 										};
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/server':
 									if ((_p0._1.ctor === '::') && (_p0._1._1.ctor === '[]')) {
@@ -12315,8 +12361,12 @@ var _user$project$Update$sendLine = F4(
 											case 'delete':
 												return {
 													ctor: '::',
-													_0: A2(_user$project$Update$modifyServer, server, _user$project$Update$RemoveServer),
-													_1: {ctor: '[]'}
+													_0: A2(_user$project$Update$modifyServer, server, _user$project$Update$DisconnectServer),
+													_1: {
+														ctor: '::',
+														_0: A2(_user$project$Update$modifyServer, server, _user$project$Update$RemoveServer),
+														_1: {ctor: '[]'}
+													}
 												};
 											case 'disconnect':
 												return {
@@ -12325,10 +12375,10 @@ var _user$project$Update$sendLine = F4(
 													_1: {ctor: '[]'}
 												};
 											default:
-												break _v0_17;
+												break _v0_18;
 										}
 									} else {
-										break _v0_17;
+										break _v0_18;
 									}
 								case '/help':
 									var lines = A2(
@@ -12354,6 +12404,20 @@ var _user$project$Update$sendLine = F4(
 											_user$project$Update$AddLine(buf.name),
 											lines));
 									return cmds;
+								case '/nick':
+									if ((_p0._1.ctor === '::') && (_p0._1._1.ctor === '[]')) {
+										return {
+											ctor: '::',
+											_0: A2(
+												_user$project$Update$modifyServer,
+												server,
+												_user$project$Update$SendRawLine(
+													A2(_elm_lang$core$Basics_ops['++'], 'NICK ', _p0._1._0))),
+											_1: {ctor: '[]'}
+										};
+									} else {
+										break _v0_18;
+									}
 								case '/quote':
 									return {
 										ctor: '::',
@@ -12365,10 +12429,10 @@ var _user$project$Update$sendLine = F4(
 										_1: {ctor: '[]'}
 									};
 								default:
-									break _v0_17;
+									break _v0_18;
 							}
 						} else {
-							break _v0_17;
+							break _v0_18;
 						}
 					} while(false);
 					return addErrorMessage('unknown command, did you forget to /quote?');
@@ -12413,7 +12477,7 @@ var _user$project$Update$updateServer = F3(
 							}
 						}
 					});
-				var isDirectMessage = (!_elm_lang$core$Native_Utils.eq(server.meta.nick, _p10.nick)) && (!A2(_elm_lang$core$String$startsWith, '#', _p9));
+				var isDirectMessage = (!_elm_lang$core$Native_Utils.eq(server.meta.nick, _p10.nick)) && (!_user$project$Update$targetIsChannel(_p9));
 				var nickRegexp = _elm_lang$core$Regex$regex(
 					A2(
 						_elm_lang$core$Basics_ops['++'],
@@ -12464,8 +12528,8 @@ var _user$project$Update$updateServer = F3(
 						_elm_lang$core$Native_Utils.crash(
 							'Update',
 							{
-								start: {line: 119, column: 21},
-								end: {line: 119, column: 32}
+								start: {line: 120, column: 21},
+								end: {line: 120, column: 32}
 							}),
 						'bad buffer name given?',
 						_p12);
@@ -12764,15 +12828,14 @@ var _user$project$Update$update = F2(
 							_elm_lang$core$Native_Utils.crash(
 								'Update',
 								{
-									start: {line: 287, column: 21},
-									end: {line: 287, column: 32}
+									start: {line: 288, column: 21},
+									end: {line: 288, column: 32}
 								}),
 							'unknown server given',
 							{ctor: '_Tuple2', _0: _p31, _1: _p30});
 					}
 				case 'AddServer':
 					var _p34 = _p28._0;
-					var pass = _elm_lang$core$Native_Utils.eq(_p34.pass, '') ? _elm_lang$core$Maybe$Nothing : _elm_lang$core$Maybe$Just(_p34.pass);
 					var queryString = A2(
 						_elm_lang$core$String$join,
 						'&',
@@ -12796,7 +12859,11 @@ var _user$project$Update$update = F2(
 									_0: {ctor: '_Tuple2', _0: 'port', _1: _p34.port_},
 									_1: {
 										ctor: '::',
-										_0: {ctor: '_Tuple2', _0: 'proxyPass', _1: _p34.proxyPass},
+										_0: {
+											ctor: '_Tuple2',
+											_0: 'proxyPass',
+											_1: A2(_elm_lang$core$Maybe$withDefault, '', _p34.proxyPass)
+										},
 										_1: {
 											ctor: '::',
 											_0: {ctor: '_Tuple2', _0: 'name', _1: _p34.name},
@@ -12819,7 +12886,7 @@ var _user$project$Update$update = F2(
 								}
 							}
 						});
-					var server = {socket: socketUrl, pass: pass, meta: _p34, buffers: _elm_lang$core$Dict$empty};
+					var server = {socket: socketUrl, pass: _p34.pass, meta: _p34, buffers: _elm_lang$core$Dict$empty};
 					var servers_ = A3(_elm_lang$core$Dict$insert, _p34.name, server, model.servers);
 					return A2(
 						_elm_lang$core$Platform_Cmd_ops['!'],
@@ -13268,7 +13335,7 @@ var _user$project$Update$handleMessage = F6(
 					_elm_lang$core$Maybe$map,
 					A2(_user$project$Model$setNickTimestamp, nick, ts),
 					A2(_user$project$Model$getBuffer, server, target)))) : model;
-		var target_ = A2(_elm_lang$core$String$startsWith, '#', target) ? target : user.nick;
+		var target_ = _user$project$Update$targetIsChannel(target) ? target : user.nick;
 		var newMsg = A2(
 			_user$project$Update$modifyServer,
 			server,
@@ -13917,7 +13984,7 @@ var _user$project$View$viewForm = function (form) {
 					_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server host:', _2: 'server', _3: 'irc.freenote.net'},
 					_1: {
 						ctor: '::',
-						_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server port:', _2: 'port_', _3: '6697'},
+						_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server port:', _2: 'port_', _3: '6697, (TLS: +6697)'},
 						_1: {
 							ctor: '::',
 							_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$passwordInput, _1: 'IRC server password', _2: 'pass', _3: ''},
