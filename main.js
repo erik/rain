@@ -13403,8 +13403,8 @@ var _user$project$View$linkifyLine = function (line) {
 				return _elm_lang$core$Native_Utils.crashCase(
 					'View',
 					{
-						start: {line: 304, column: 13},
-						end: {line: 312, column: 62}
+						start: {line: 306, column: 13},
+						end: {line: 314, column: 62}
 					},
 					_p0)(
 					A2(_elm_lang$core$Basics_ops['++'], 'Linkify failed on', word));
@@ -13521,10 +13521,11 @@ var _user$project$View$viewLineGroup = F2(
 					_0: _elm_lang$html$Html_Attributes$class('group-messages'),
 					_1: {ctor: '[]'}
 				},
-				A2(
-					_elm_lang$core$List$map,
-					_user$project$View$formatLine(serverMeta.nick),
-					msgs));
+				_elm_lang$core$List$reverse(
+					A2(
+						_elm_lang$core$List$map,
+						_user$project$View$formatLine(serverMeta.nick),
+						msgs)));
 		};
 		var timeStr = A2(
 			_mgold$elm_date_format$Date_Format$format,
@@ -13637,10 +13638,11 @@ var _user$project$View$viewBufferMessages = F2(
 				_0: _elm_lang$html$Html_Attributes$id('buffer-messages'),
 				_1: {ctor: '[]'}
 			},
-			A2(
-				_elm_lang$core$List$map,
-				_user$project$View$viewLineGroup(serverMeta),
-				buffer));
+			_elm_lang$core$List$reverse(
+				A2(
+					_elm_lang$core$List$map,
+					_user$project$View$viewLineGroup(serverMeta),
+					buffer)));
 	});
 var _user$project$View$viewTopic = function (buffer) {
 	var topic = A2(_elm_lang$core$Maybe$withDefault, '', buffer.topic);
