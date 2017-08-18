@@ -42,20 +42,30 @@ subscriptions model =
                 |> Dict.values
                 |> List.map
                     (\server -> WebSocket.listen server.socket (handleLines server.meta.name))
+
+        -- Periodically send PINGs to all connected servers.
+        pingServers =
+            model.servers
+                |> Dict.keys
+                |> List.map
+                    (\serverName ->
+                        Time.every (60 * Time.second)
+                            (\_ -> ModifyServer serverName (SendRawLine "PING are-you-there"))
+                    )
     in
         Sub.batch
-            (List.append
-                [ Ports.addSavedServer AddServer
-                , Ports.receiveScrollback
-                    (\( serverName, chan, line ) ->
-                        case getServer model serverName of
-                            Just server ->
-                                ModifyServer serverName (AddLine chan line)
+            ([ Ports.addSavedServer AddServer
+             , Time.every Time.second Tick
+             , Ports.receiveScrollback
+                (\( serverName, chan, line ) ->
+                    case getServer model serverName of
+                        Just server ->
+                            ModifyServer serverName (AddLine chan line)
 
-                            Nothing ->
-                                Noop
-                    )
-                , Time.every Time.second Tick
-                ]
-                recvWs
+                        Nothing ->
+                            Noop
+                )
+             ]
+                ++ recvWs
+                ++ pingServers
             )
