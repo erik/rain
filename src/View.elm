@@ -251,6 +251,7 @@ viewBufferMessages : ServerMetadata -> LineBuffer -> Html Msg
 viewBufferMessages serverMeta buffer =
     buffer
         |> List.map (viewLineGroup serverMeta)
+        |> List.reverse
         |> div [ id "buffer-messages" ]
 
 
@@ -282,6 +283,7 @@ viewLineGroup serverMeta group =
 
         formatMessages msgs =
             List.map (formatLine serverMeta.nick) msgs
+                |> List.reverse
                 |> div [ class "group-messages" ]
     in
         div [ class "group" ]

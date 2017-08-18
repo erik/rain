@@ -80,7 +80,7 @@ hr {
     border-width: 0 0 0 .5ch;
     padding-left: .5ch;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     flex: 1;
     word-wrap: break-word;
 }
@@ -162,9 +162,10 @@ ul {
 #buffer-messages {
     flex: 1 1 auto;
     overflow-y: scroll;
+    overflow-x: hidden;
     margin: 1ch 0;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
 }
 
 #buffer-footer {
