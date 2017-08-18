@@ -14282,6 +14282,20 @@ var _user$project$View$view = function (model) {
 };
 
 var _user$project$Main$subscriptions = function (model) {
+	var pingServers = A2(
+		_elm_lang$core$List$map,
+		function (serverName) {
+			return A2(
+				_elm_lang$core$Time$every,
+				60 * _elm_lang$core$Time$second,
+				function (_p0) {
+					return A2(
+						_user$project$Update$ModifyServer,
+						serverName,
+						_user$project$Update$SendRawLine('PING are-you-there'));
+				});
+		},
+		_elm_lang$core$Dict$keys(model.servers));
 	var handleLines = F2(
 		function (serverName, lines) {
 			return _user$project$Update$MultiMsg(
@@ -14295,8 +14309,8 @@ var _user$project$Main$subscriptions = function (model) {
 					},
 					A2(
 						_elm_lang$core$List$filter,
-						function (_p0) {
-							return !_elm_lang$core$String$isEmpty(_p0);
+						function (_p1) {
+							return !_elm_lang$core$String$isEmpty(_p1);
 						},
 						_elm_lang$core$String$lines(
 							_elm_lang$core$String$trim(lines)))));
@@ -14312,34 +14326,34 @@ var _user$project$Main$subscriptions = function (model) {
 		_elm_lang$core$Dict$values(model.servers));
 	return _elm_lang$core$Platform_Sub$batch(
 		A2(
-			_elm_lang$core$List$append,
+			_elm_lang$core$Basics_ops['++'],
 			{
 				ctor: '::',
 				_0: _user$project$Ports$addSavedServer(_user$project$Update$AddServer),
 				_1: {
 					ctor: '::',
-					_0: _user$project$Ports$receiveScrollback(
-						function (_p1) {
-							var _p2 = _p1;
-							var _p4 = _p2._0;
-							var _p3 = A2(_user$project$Model$getServer, model, _p4);
-							if (_p3.ctor === 'Just') {
-								return A2(
-									_user$project$Update$ModifyServer,
-									_p4,
-									A2(_user$project$Update$AddLine, _p2._1, _p2._2));
-							} else {
-								return _user$project$Update$Noop;
-							}
-						}),
+					_0: A2(_elm_lang$core$Time$every, _elm_lang$core$Time$second, _user$project$Update$Tick),
 					_1: {
 						ctor: '::',
-						_0: A2(_elm_lang$core$Time$every, _elm_lang$core$Time$second, _user$project$Update$Tick),
+						_0: _user$project$Ports$receiveScrollback(
+							function (_p2) {
+								var _p3 = _p2;
+								var _p5 = _p3._0;
+								var _p4 = A2(_user$project$Model$getServer, model, _p5);
+								if (_p4.ctor === 'Just') {
+									return A2(
+										_user$project$Update$ModifyServer,
+										_p5,
+										A2(_user$project$Update$AddLine, _p3._1, _p3._2));
+								} else {
+									return _user$project$Update$Noop;
+								}
+							}),
 						_1: {ctor: '[]'}
 					}
 				}
 			},
-			recvWs));
+			A2(_elm_lang$core$Basics_ops['++'], recvWs, pingServers)));
 };
 var _user$project$Main$init = {ctor: '_Tuple2', _0: _user$project$Model$initialModel, _1: _elm_lang$core$Platform_Cmd$none};
 var _user$project$Main$main = _elm_lang$html$Html$program(
