@@ -68,7 +68,7 @@
  app.ports.modifyServerStore.subscribe(args => {
      let [metadata, action] = args
 
-     let servers = JSON.parse(window.localStorage.savedServers)
+     let servers = JSON.parse(window.localStorage.savedServers || '{}')
 
      if (action === 'STORE') {
          servers[metadata.name] = metadata
