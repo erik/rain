@@ -87,7 +87,7 @@ hr {
 
 .command-name {
     width: 250px;
-    font-family: Monaco, monospaced;
+    font-family: Monaco, monospace;
     display: inline-block;
 }
 
