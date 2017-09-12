@@ -42,6 +42,16 @@ subscriptions model =
                 |> Dict.values
                 |> List.map
                     (\server -> WebSocket.listen server.socket (handleLines server.meta.name))
+
+        -- Periodically send PINGs to all connected websocket proxies.
+        pingServers =
+            model.servers
+                |> Dict.keys
+                |> List.map
+                    (\serverName ->
+                        Time.every (60 * Time.second)
+                            (\_ -> ModifyServer serverName (SendRawLine "*PING"))
+                    )
     in
         Sub.batch
             ([ Ports.addSavedServer AddServer

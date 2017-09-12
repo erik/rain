@@ -51,26 +51,35 @@ wss.on('connection', function connection(ws) {
         })
         .on('end', () => { ws.close(); });
 
-    ws.send('AUTHENTICATE\n');
+    // TODO: Maybe this can be replaced by 001?
+    ws.send('*CONNECTED\n');
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('close', () => socket.destroy());
 
     ws.on('message', function incoming(message) {
         message.split(/[\r\n]+/).forEach(line => {
             console.log('-->', line);
+
+            if (line === '*PING') {
+                ws.send('*PONG\n');
+            }
+
             socket.write(line + '\n');
         });
-    }).on('close', () => socket.destroy());
+    });
 });
 
 
 // Clear out dead connections
 setInterval(() => {
     wss.clients.forEach((ws) => {
-        if (!ws.isAlive) return ws.terminate();
-
-        ws.isAlive = false;
-        ws.ping('', false, true);
+        if (!ws.isAlive) {
+            ws.terminate();
+        } else {
+            ws.isAlive = false;
+            ws.ping('', false, true);
+        }
     });
 }, 15 * 1000);
