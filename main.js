@@ -14366,7 +14366,7 @@ var _user$project$Main$subscriptions = function (model) {
 					}
 				}
 			},
-			recvWs));
+			A2(_elm_lang$core$Basics_ops['++'], recvWs, pingServers)));
 };
 var _user$project$Main$init = {ctor: '_Tuple2', _0: _user$project$Model$initialModel, _1: _elm_lang$core$Platform_Cmd$none};
 var _user$project$Main$main = _elm_lang$html$Html$program(
