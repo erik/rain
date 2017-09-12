@@ -180,12 +180,19 @@ updateServer server msg model =
                 getTs msg =
                     msg.time |> Maybe.withDefault model.currentTime
             in
-                if line == "AUTHENTICATE" then
-                    update (modifyServer server ConnectIrc) model
-                else
-                    Irc.splitMessage line
-                        |> Maybe.map (\msg -> handleCommand server (getTs msg) msg model)
-                        |> Maybe.withDefault ( model, Cmd.none )
+                -- There are a couple non standard commands the proxy
+                -- server can send.
+                case line of
+                    "*CONNECTED" ->
+                        update (modifyServer server ConnectIrc) model
+
+                    "*PONG" ->
+                        model ! []
+
+                    _ ->
+                        Irc.splitMessage line
+                            |> Maybe.map (\msg -> handleCommand server (getTs msg) msg model)
+                            |> Maybe.withDefault ( model, Cmd.none )
 
         SelectBuffer bufferName ->
             let
