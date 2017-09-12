@@ -67,4 +67,5 @@ subscriptions model =
                 )
              ]
                 ++ recvWs
+                ++ pingServers
             )
