@@ -7,9 +7,10 @@ const url = require('url');
 const WebSocket = require('ws');
 
 const PROXY_PASS = process.env.PROXY_PASS || '';
+const PROXY_PORT = +process.env.PROXY_PORT || 6676;
 
-const wss = new WebSocket.Server({ port: 6676 });
-
+const wss = new WebSocket.Server({ port: PROXY_PORT });
+console.log(`WebSocket proxy listening on ${PROXY_PORT}`);
 
 wss.on('connection', function connection(ws) {
     let query = url.parse(ws.upgradeReq.url, true).query;
