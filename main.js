@@ -13258,15 +13258,32 @@ var _user$project$Update$handleCommand = F4(
 						}
 					case 'NICK':
 						if ((_p40._1.ctor === '::') && (_p40._1._1.ctor === '[]')) {
-							var myNick = _elm_lang$core$Native_Utils.eq(msg.user.nick, server.meta.nick) ? _p40._1._0 : server.meta.nick;
+							var _p57 = _p40._1._0;
+							var myNick = _elm_lang$core$Native_Utils.eq(msg.user.nick, server.meta.nick) ? _p57 : server.meta.nick;
 							var serverMeta_ = function (meta) {
 								return _elm_lang$core$Native_Utils.update(
 									meta,
 									{nick: myNick});
 							}(server.meta);
-							var server_ = _elm_lang$core$Native_Utils.update(
-								server,
-								{meta: serverMeta_});
+							var server_ = function (buffers) {
+								return _elm_lang$core$Native_Utils.update(
+									server,
+									{buffers: buffers, meta: serverMeta_});
+							}(
+								A2(
+									_elm_lang$core$Dict$map,
+									F2(
+										function (_p56, buf) {
+											return A2(
+												_user$project$Model$addNicks,
+												{
+													ctor: '::',
+													_0: _p57,
+													_1: {ctor: '[]'}
+												},
+												A2(_user$project$Model$removeNick, msg.user.nick, buf));
+										}),
+									server.buffers));
 							var model_ = _elm_lang$core$Native_Utils.update(
 								model,
 								{
@@ -13286,7 +13303,7 @@ var _user$project$Update$handleCommand = F4(
 				break _v22_13;
 			}
 		} while(false);
-		var _p56 = A2(_elm_lang$core$Debug$log, 'unknown msg', msg);
+		var _p58 = A2(_elm_lang$core$Debug$log, 'unknown msg', msg);
 		var msgText = A2(_elm_lang$core$String$join, ' ', msg.params);
 		var newLine = {
 			ts: ts,
@@ -13328,7 +13345,7 @@ var _user$project$Update$handleMessage = F6(
 			_elm_lang$core$Regex$replace,
 			_elm_lang$core$Regex$All,
 			colorCodeRegex,
-			function (_p57) {
+			function (_p59) {
 				return '';
 			},
 			message);
