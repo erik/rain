@@ -65,6 +65,7 @@ wss.on('connection', function connection(ws) {
 
             if (line === '*PING') {
                 ws.send('*PONG\n');
+                return;
             }
 
             socket.write(line + '\n');
