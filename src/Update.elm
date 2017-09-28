@@ -664,7 +664,18 @@ handleCommand server ts msg model =
                     server.meta |> (\meta -> { meta | nick = myNick })
 
                 server_ =
-                    { server | meta = serverMeta_ }
+                    server.buffers
+                        |> Dict.map
+                            (\_ buf ->
+                                removeNick msg.user.nick buf
+                                    |> addNicks [ nick ]
+                            )
+                        |> (\buffers ->
+                                { server
+                                    | buffers = buffers
+                                    , meta = serverMeta_
+                                }
+                           )
 
                 model_ =
                     { model | servers = Dict.insert server.meta.name server_ model.servers }
