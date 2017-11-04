@@ -13415,7 +13415,7 @@ var _user$project$View$linkifyLine = function (line) {
 					_1: {ctor: '[]'}
 				});
 		});
-	var linkRegex = _elm_lang$core$Regex$regex('\\b(\\w+://[&-\\w@:%._\\+~#=/\\?]+)\\b');
+	var linkRegex = _elm_lang$core$Regex$regex('\\b(\\w+://[!,&-\\w@:%._\\+~#=/\\?]+)\\b');
 	var applyMarkup = function (word) {
 		var _p0 = A3(
 			_elm_lang$core$Regex$find,
