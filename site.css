@@ -96,21 +96,22 @@ hr {
 }
 
 #buffer-header {
-    position: relative;
+    position: absolute;
+    width: 100%;
 }
 
 #buffer-topic {
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    padding-bottom: .5em;
+    font-style: oblique;
     background: white;
 }
 
 #buffer-topic:hover {
     white-space: normal;
     overflow: auto;
-    position: absolute;
+    margin-bottom: 0.5em;
 }
 
 #input-line {
@@ -157,6 +158,7 @@ ul {
     flex-direction: column;
     height: 100vh;
     flex: 1;
+    position: relative;
 }
 
 #buffer-messages {
@@ -166,6 +168,7 @@ ul {
     margin: 1ch 0;
     display: flex;
     flex-direction: column;
+    margin-top: 100px;
 }
 
 #buffer-footer {
