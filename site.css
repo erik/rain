@@ -71,6 +71,15 @@ hr {
     color: rgba(0,0,0,0);
 }
 
+.day-group-head {
+  font-size: 12px;
+  text-align: center;
+  margin: 0 auto;
+  width: 100%;
+  font-weight: bold;
+  padding: 1em 0;
+}
+
 .group {
     padding-bottom: .5ch;
 }

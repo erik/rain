@@ -1,5 +1,6 @@
 module Model exposing (..)
 
+import Date exposing (Date)
 import Dict exposing (Dict)
 import Form exposing (Form)
 import Form.Validate as Validate exposing (..)
@@ -50,6 +51,12 @@ type alias Line =
     }
 
 
+type alias DayGroup =
+    { date : Date.Date
+    , lineGroups : List LineGroup
+    }
+
+
 type alias LineGroup =
     { ts : Time.Time
     , nick : String
@@ -58,7 +65,7 @@ type alias LineGroup =
 
 
 type alias LineBuffer =
-    List LineGroup
+    List DayGroup
 
 
 type alias UserInfo =
@@ -230,8 +237,28 @@ getActiveServer model =
     getActive model |> Maybe.map Tuple.first
 
 
-appendLine : List LineGroup -> Line -> List LineGroup
-appendLine groups line =
+appendLine : List DayGroup -> Line -> List DayGroup
+appendLine dayGroups line =
+    let
+        msgDate =
+            Date.fromTime line.ts
+
+        dateTuple dt =
+            ( dt |> Date.year, dt |> Date.month, dt |> Date.day )
+    in
+        case dayGroups of
+            [] ->
+                [ { date = msgDate, lineGroups = appendToLineGroup [] line } ]
+
+            hd :: rest ->
+                if (dateTuple hd.date) == (dateTuple msgDate) then
+                    { hd | lineGroups = appendToLineGroup hd.lineGroups line } :: rest
+                else
+                    [ { date = msgDate, lineGroups = appendToLineGroup [] line }, hd ] ++ rest
+
+
+appendToLineGroup : List LineGroup -> Line -> List LineGroup
+appendToLineGroup groups line =
     case groups of
         [] ->
             [ { ts = line.ts
