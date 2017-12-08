@@ -11369,7 +11369,7 @@ var _mgold$elm_date_format$Date_Format$format = F2(
 	});
 var _mgold$elm_date_format$Date_Format$formatISO8601 = _mgold$elm_date_format$Date_Format$format('%Y-%m-%dT%H:%M:%SZ');
 
-var _user$project$Model$appendLine = F2(
+var _user$project$Model$appendToLineGroup = F2(
 	function (groups, line) {
 		var _p0 = groups;
 		if (_p0.ctor === '[]') {
@@ -11419,6 +11419,63 @@ var _user$project$Model$appendLine = F2(
 				A2(_elm_lang$core$List$take, 1000, _p2));
 		}
 	});
+var _user$project$Model$appendLine = F2(
+	function (dayGroups, line) {
+		var dateTuple = function (dt) {
+			return {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Date$year(dt),
+				_1: _elm_lang$core$Date$month(dt),
+				_2: _elm_lang$core$Date$day(dt)
+			};
+		};
+		var msgDate = _elm_lang$core$Date$fromTime(line.ts);
+		var _p3 = dayGroups;
+		if (_p3.ctor === '[]') {
+			return {
+				ctor: '::',
+				_0: {
+					date: msgDate,
+					lineGroups: A2(
+						_user$project$Model$appendToLineGroup,
+						{ctor: '[]'},
+						line)
+				},
+				_1: {ctor: '[]'}
+			};
+		} else {
+			var _p5 = _p3._1;
+			var _p4 = _p3._0;
+			return _elm_lang$core$Native_Utils.eq(
+				dateTuple(_p4.date),
+				dateTuple(msgDate)) ? {
+				ctor: '::',
+				_0: _elm_lang$core$Native_Utils.update(
+					_p4,
+					{
+						lineGroups: A2(_user$project$Model$appendToLineGroup, _p4.lineGroups, line)
+					}),
+				_1: _p5
+			} : A2(
+				_elm_lang$core$Basics_ops['++'],
+				{
+					ctor: '::',
+					_0: {
+						date: msgDate,
+						lineGroups: A2(
+							_user$project$Model$appendToLineGroup,
+							{ctor: '[]'},
+							line)
+					},
+					_1: {
+						ctor: '::',
+						_0: _p4,
+						_1: {ctor: '[]'}
+					}
+				},
+				_p5);
+		}
+	});
 var _user$project$Model$getBuffer = F2(
 	function (server, bufferName) {
 		return A2(
@@ -11446,13 +11503,13 @@ var _user$project$Model$getServer = F2(
 		return A2(_elm_lang$core$Dict$get, serverName, model.servers);
 	});
 var _user$project$Model$getServerBuffer = F2(
-	function (model, _p3) {
-		var _p4 = _p3;
-		var server = A2(_user$project$Model$getServer, model, _p4._0);
+	function (model, _p6) {
+		var _p7 = _p6;
+		var server = A2(_user$project$Model$getServer, model, _p7._0);
 		var buffer = A2(
 			_elm_lang$core$Maybe$andThen,
 			function (server) {
-				return A2(_user$project$Model$getBuffer, server, _p4._1);
+				return A2(_user$project$Model$getBuffer, server, _p7._1);
 			},
 			server);
 		return A3(
@@ -11513,6 +11570,10 @@ var _user$project$Model$Line = F3(
 	function (a, b, c) {
 		return {ts: a, nick: b, message: c};
 	});
+var _user$project$Model$DayGroup = F2(
+	function (a, b) {
+		return {date: a, lineGroups: b};
+	});
 var _user$project$Model$LineGroup = F3(
 	function (a, b, c) {
 		return {ts: a, nick: b, messages: c};
@@ -11534,15 +11595,15 @@ var _user$project$Model$UsersLoaded = function (a) {
 };
 var _user$project$Model$setNickTimestamp = F3(
 	function (nick, ts, buf) {
-		var _p5 = buf.users;
-		if (_p5.ctor === 'UsersLoading') {
+		var _p8 = buf.users;
+		if (_p8.ctor === 'UsersLoading') {
 			return buf;
 		} else {
 			return _elm_lang$core$Native_Utils.update(
 				buf,
 				{
 					users: _user$project$Model$UsersLoaded(
-						A3(_elm_lang$core$Dict$insert, nick, ts, _p5._0))
+						A3(_elm_lang$core$Dict$insert, nick, ts, _p8._0))
 				});
 		}
 	});
@@ -11569,18 +11630,18 @@ var _user$project$Model$getOrCreateBuffer = F2(
 	});
 var _user$project$Model$addNicks = F2(
 	function (nicks, buf) {
-		var _p6 = buf.users;
-		if (_p6.ctor === 'UsersLoading') {
+		var _p9 = buf.users;
+		if (_p9.ctor === 'UsersLoading') {
 			return _elm_lang$core$Native_Utils.update(
 				buf,
 				{
 					users: _user$project$Model$UsersLoading(
-						A2(_elm_lang$core$Basics_ops['++'], _p6._0, nicks))
+						A2(_elm_lang$core$Basics_ops['++'], _p9._0, nicks))
 				});
 		} else {
 			var users = A2(
 				_elm_lang$core$Dict$union,
-				_p6._0,
+				_p9._0,
 				_elm_lang$core$Dict$fromList(
 					A2(
 						_elm_lang$core$List$map,
@@ -11597,8 +11658,8 @@ var _user$project$Model$addNicks = F2(
 	});
 var _user$project$Model$removeNick = F2(
 	function (nick, buf) {
-		var _p7 = buf.users;
-		if (_p7.ctor === 'UsersLoading') {
+		var _p10 = buf.users;
+		if (_p10.ctor === 'UsersLoading') {
 			return _elm_lang$core$Native_Utils.update(
 				buf,
 				{
@@ -11608,14 +11669,14 @@ var _user$project$Model$removeNick = F2(
 							function (x) {
 								return !_elm_lang$core$Native_Utils.eq(x, nick);
 							},
-							_p7._0))
+							_p10._0))
 				});
 		} else {
 			return _elm_lang$core$Native_Utils.update(
 				buf,
 				{
 					users: _user$project$Model$UsersLoaded(
-						A2(_elm_lang$core$Dict$remove, nick, _p7._0))
+						A2(_elm_lang$core$Dict$remove, nick, _p10._0))
 				});
 		}
 	});
@@ -13431,8 +13492,8 @@ var _user$project$View$linkifyLine = function (line) {
 				return _elm_lang$core$Native_Utils.crashCase(
 					'View',
 					{
-						start: {line: 306, column: 13},
-						end: {line: 314, column: 62}
+						start: {line: 325, column: 13},
+						end: {line: 333, column: 62}
 					},
 					_p0)(
 					A2(_elm_lang$core$Basics_ops['++'], 'Linkify failed on', word));
@@ -13657,6 +13718,37 @@ var _user$project$View$viewLineGroup = F2(
 				}
 			});
 	});
+var _user$project$View$viewDayGroup = F2(
+	function (serverMeta, group) {
+		var lineGroups = _elm_lang$core$List$reverse(
+			A2(
+				_elm_lang$core$List$map,
+				function (grp) {
+					return A2(_user$project$View$viewLineGroup, serverMeta, grp);
+				},
+				group.lineGroups));
+		var dateStr = A2(_mgold$elm_date_format$Date_Format$format, '%Y/%m/%d', group.date);
+		var groupHead = A2(
+			_elm_lang$html$Html$div,
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html_Attributes$class('day-group-head'),
+				_1: {ctor: '[]'}
+			},
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html$text(dateStr),
+				_1: {ctor: '[]'}
+			});
+		return A2(
+			_elm_lang$html$Html$div,
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html_Attributes$class('day-group'),
+				_1: {ctor: '[]'}
+			},
+			{ctor: '::', _0: groupHead, _1: lineGroups});
+	});
 var _user$project$View$viewBufferMessages = F2(
 	function (serverMeta, buffer) {
 		return A2(
@@ -13669,7 +13761,7 @@ var _user$project$View$viewBufferMessages = F2(
 			_elm_lang$core$List$reverse(
 				A2(
 					_elm_lang$core$List$map,
-					_user$project$View$viewLineGroup(serverMeta),
+					_user$project$View$viewDayGroup(serverMeta),
 					buffer)));
 	});
 var _user$project$View$viewTopic = function (buffer) {
@@ -13811,7 +13903,12 @@ var _user$project$View$hasUnread = function (buf) {
 				function (grp) {
 					return _elm_lang$core$List$head(grp.messages);
 				},
-				_elm_lang$core$List$head(buf.buffer))));
+				A2(
+					_elm_lang$core$Maybe$andThen,
+					function (date) {
+						return _elm_lang$core$List$head(date.lineGroups);
+					},
+					_elm_lang$core$List$head(buf.buffer)))));
 	return _elm_lang$core$Native_Utils.cmp(buf.lastChecked, lastMessageTs) < 0;
 };
 var _user$project$View$viewBufferList = function (model) {
