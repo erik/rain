@@ -115,6 +115,7 @@ hasUnread buf =
         lastMessageTs =
             buf.buffer
                 |> List.head
+                |> Maybe.andThen (\date -> List.head date.lineGroups)
                 |> Maybe.andThen (\grp -> List.head grp.messages)
                 |> Maybe.map .ts
                 |> Maybe.withDefault buf.lastChecked
@@ -250,9 +251,27 @@ viewTopic buffer =
 viewBufferMessages : ServerMetadata -> LineBuffer -> Html Msg
 viewBufferMessages serverMeta buffer =
     buffer
-        |> List.map (viewLineGroup serverMeta)
+        |> List.map (viewDayGroup serverMeta)
         |> List.reverse
         |> div [ id "buffer-messages" ]
+
+
+viewDayGroup : ServerMetadata -> DayGroup -> Html Msg
+viewDayGroup serverMeta group =
+    let
+        dateStr =
+            group.date |> Date.format "%Y/%m/%d"
+
+        groupHead =
+            div [ class "day-group-head" ] [ text dateStr ]
+
+        lineGroups =
+            group.lineGroups
+                |> List.map (\grp -> viewLineGroup serverMeta grp)
+                |> List.reverse
+    in
+        div [ class "day-group" ]
+            (groupHead :: lineGroups)
 
 
 viewLineGroup : ServerMetadata -> LineGroup -> Html Msg
