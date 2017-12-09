@@ -13492,8 +13492,8 @@ var _user$project$View$linkifyLine = function (line) {
 				return _elm_lang$core$Native_Utils.crashCase(
 					'View',
 					{
-						start: {line: 325, column: 13},
-						end: {line: 333, column: 62}
+						start: {line: 326, column: 13},
+						end: {line: 334, column: 62}
 					},
 					_p0)(
 					A2(_elm_lang$core$Basics_ops['++'], 'Linkify failed on', word));
@@ -13874,7 +13874,11 @@ var _user$project$View$viewBuffer = F3(
 														_1: {
 															ctor: '::',
 															_0: _elm_lang$html$Html_Attributes$autofocus(true),
-															_1: {ctor: '[]'}
+															_1: {
+																ctor: '::',
+																_0: _elm_lang$html$Html_Attributes$spellcheck(true),
+																_1: {ctor: '[]'}
+															}
 														}
 													}
 												}
