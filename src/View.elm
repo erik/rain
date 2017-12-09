@@ -6,7 +6,7 @@ import Dict
 import Form exposing (Form)
 import Form.Input as Input
 import Html exposing (..)
-import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus)
+import Html.Attributes exposing (id, href, class, title, target, value, classList, placeholder, autofocus, spellcheck)
 import Html.Events exposing (onInput, onSubmit, onWithOptions, keyCode, onClick)
 import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Json.Decode as Json
@@ -197,6 +197,7 @@ viewBuffer model server buffer =
                     , onInputKey model server buffer
                     , value model.inputLine
                     , autofocus True
+                    , spellcheck True
                     ]
                     []
                 ]
