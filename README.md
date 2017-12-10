@@ -10,7 +10,7 @@ build dependencies:
 
   - [elm](https://guide.elm-lang.org/install.html)
   - [node](https://nodejs.org/en/download/) - for `wsproxy`
-  - [entr](https://github.com/clibs/entr) - for `make watch`
+  - [webpack](https://webpack.org) - for `make build`
 
 ```
     # Install dependencies, build, and run:

@@ -1,25 +1,23 @@
-ELM_FLAGS ?= --warn
-
 all: build
 
-debug: ELM_FLAGS += --debug
-debug: clean build
+debug: clean
+	webpack
 
 build:
-	elm-make src/Main.elm --output main.js $(ELM_FLAGS)
+	webpack -p --progress
 
 clean:
 	rm -r elm-stuff/build-artifacts/*/user/
 
 watch:
-	ls src/**.elm | entr make all
+	webpack --watch
 
 server:
-	python3 -m http.server
+	webpack-dev-server
 
 proxy:
-	cd wsproxy; npm install; node index.js
+	node websocket_proxy_server.js
 
 # Spin up everything
 dev:
-	make -j watch server proxy
+	make -j server proxy

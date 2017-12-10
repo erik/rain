@@ -1,0 +1,17 @@
+{
+  "name": "wsproxy",
+  "version": "1.0.0",
+  "description": "IRC <-> WS",
+  "license": "MIT",
+  "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-env": "^2.4.1",
+    "babel-loader": "^7.1.2",
+    "babel-webpack-plugin": "^0.1.1",
+    "elm-webpack-loader": "^4.4.0",
+    "file-loader": "^1.1.5",
+    "webpack": "^3.10.0",
+    "webpack-dev-server": "^2.9.7",
+    "ws": "^2.3.1"
+  }
+}
