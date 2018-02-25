@@ -19,3 +19,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+icon.svg and icon.png are derivative works containing a Font Awesome glyph.
+
+* Font Awesome 4.0.2 by @davegandy - http://fontawesome.io - @fontawesome
+* License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
