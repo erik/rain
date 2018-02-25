@@ -14112,7 +14112,7 @@ var _user$project$View$viewForm = function (form) {
 				_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server name:', _2: 'name', _3: 'freenode'},
 				_1: {
 					ctor: '::',
-					_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server host:', _2: 'server', _3: 'irc.freenote.net'},
+					_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server host:', _2: 'server', _3: 'irc.freenode.net'},
 					_1: {
 						ctor: '::',
 						_0: {ctor: '_Tuple4', _0: _etaque$elm_form$Form_Input$textInput, _1: 'IRC server port:', _2: 'port_', _3: '6697, (TLS: +6697)'},
